@@ -1,0 +1,9 @@
+LIBRARY LocalDB
+EXPORTS
+	CreateDB
+	DeleteDB
+	CreateTable
+	DeleteTable
+	AlterTable
+	InsertData
+	DeleteAllData
