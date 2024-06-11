@@ -12,6 +12,7 @@ extern "C" {
 	HRESULT    AlterTable       (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 	HRESULT    InsertData       (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 	HRESULT    DeleteAllData    (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
+	HRESULT    ShowTableData    (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 }
 
 #endif
