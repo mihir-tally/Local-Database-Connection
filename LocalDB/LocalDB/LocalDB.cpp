@@ -96,6 +96,18 @@ HRESULT ShowTableData(Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResul
     return S_OK;
 }
 
+HRESULT UpdateTableData (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize)
+{
+    TLocalDataBase* localdatabase;
+
+    localdatabase = ALLOC_TLocalDataBase (pResult, pResultSize);
+
+    localdatabase->UpdateTableData (pArgc, pArgv);
+
+    delete localdatabase;
+    return S_OK;
+}
+
 TLocalDataBase::TLocalDataBase (StrPtr* pResult, Long* pResultSize)
 {
     vResult     = pResult;
@@ -1087,6 +1099,79 @@ end:
     return rc;
 }
 
+eGoodBad TLocalDataBase::UpdateTableData (Word pArgc, WStrPtr* pArgv)
+{
+        AStrPtr    server                    = nullptr;
+        AStrPtr    username                  = nullptr;
+        AStrPtr    password                  = nullptr;
+        AStrPtr    databasename              = nullptr;
+        AStrPtr    table_name                = nullptr;
+        AStrPtr    column_name_value         = nullptr;
+        AStrPtr    condition_data            = nullptr;
+        StrPtr     bad_response              = nullptr;
+        ULong      server_len;
+        ULong      username_len;
+        ULong      password_len;
+        ULong      databasename_len;
+        ULong      table_name_len;
+        ULong      column_name_value_len;
+        ULong      condition_data_len;
+        eGoodBad   rc                        = BAD;
+
+    if (pArgc != 7) {
+
+        SetResult (INSUFFICIENT_PARAMS_UPDATE_COLUMN_DATA);
+
+    }
+    server_len = (ULong) _tcslen (pArgv[0]);
+    server     = (AStrPtr) malloc ((server_len + 1) * sizeof (AChar));
+    UTF16ToAscii (server, pArgv[0], server_len);
+
+    username_len = (ULong) _tcslen (pArgv[1]);
+    username     = (AStrPtr) malloc ((username_len + 1) * sizeof (AChar));
+    UTF16ToAscii (username, pArgv[1], username_len);
+
+    password_len = (ULong) _tcslen (pArgv[2]);
+    password     = (AStrPtr) malloc ((password_len + 1) * sizeof (AChar));
+    UTF16ToAscii (password, pArgv[2], password_len);
+
+    databasename_len = (ULong) _tcslen (pArgv[3]);
+    databasename     = (AStrPtr) malloc ((databasename_len + 1) * sizeof (AChar));
+    UTF16ToAscii (databasename, pArgv[3], databasename_len);
+
+    table_name_len = (ULong) _tcslen (pArgv[4]);
+    table_name     = (AStrPtr) malloc ((table_name_len + 1) * sizeof (AChar));
+    UTF16ToAscii (table_name, pArgv[4], table_name_len);
+
+    column_name_value_len = (ULong) _tcslen (pArgv[5]);
+    column_name_value     = (AStrPtr) malloc ((column_name_value_len + 1) * sizeof (AChar));
+    UTF16ToAscii (column_name_value, pArgv[5], column_name_value_len);
+
+    condition_data_len = (ULong) _tcslen (pArgv[6]);
+    condition_data     = (AStrPtr) malloc ((condition_data_len + 1) * sizeof (AChar));
+    UTF16ToAscii (condition_data, pArgv[6], condition_data_len);
+
+    if (UpdateColumnData (server, username, password, databasename, table_name, column_name_value, condition_data, bad_response) == BAD) {
+
+        SetResult (bad_response);
+        goto end;
+    }
+    SetResult (TABLE_COLUMN_DATA_UPDATED);
+
+    rc = GOOD;
+
+end:
+    free (server);
+    free (username);
+    free (password);
+    free (databasename);
+    free (table_name);
+    free (bad_response);
+    free (column_name_value);
+    free (condition_data);
+    return rc;
+}
+
 eGoodBad TLocalDataBase::InsertDataIntoTable (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pColumnNames, AStrPtr pValues, StrPtr& pBadResponse)
 {
         Driver*               driver      = nullptr;
@@ -1425,6 +1510,109 @@ eGoodBad TLocalDataBase::ShowTableColumnData (Word pArgc, AStrPtr pServer, AStrP
 
         bad_resp     = e.what ();
         len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+        delete stmt;
+        delete con;
+        return BAD;
+    }
+}
+
+eGoodBad TLocalDataBase::UpdateColumnData (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, 
+                                           AStrPtr pColumnDataValue, AStrPtr pConditionData, StrPtr& pBadResponse)
+{
+        Driver *               driver    = nullptr;
+        Connection *           con       = nullptr;
+        Statement *            stmt      = nullptr;
+        PreparedStatement *    pstmt     = nullptr;
+        ResultSet *            res       = nullptr;
+        string                 query;
+        CAStrPtr               bad_resp  = nullptr;
+        ULong                  len;
+
+    try {
+
+        driver = get_driver_instance ();
+        con = driver->connect (pServer, pUserName, pPassword);
+
+    } catch (SQLException& e) {
+
+        bad_resp = e.what ();
+        len = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+        return BAD;
+    }
+
+    try {
+
+        pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
+        pstmt->setString (1, pDataBaseName);
+        res = pstmt->executeQuery ();
+
+        if (!res->next ()) {
+
+            bad_resp = "Database does not exist";
+            len = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            delete res;
+            delete pstmt;
+            delete con;
+            return BAD;
+        }
+
+        delete res;
+        delete pstmt;
+        pstmt = nullptr;
+
+        // Check if the table exists
+        con->setSchema (pDataBaseName);
+        pstmt = con->prepareStatement ("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?");
+        pstmt->setString (1, pDataBaseName);
+        pstmt->setString (2, pTableName);
+        res = pstmt->executeQuery ();
+
+        if (!res->next()) {
+
+            // Table does not exist
+            bad_resp = "Table does not exist";
+            len = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            delete res;
+            delete pstmt;
+            delete con;
+            return BAD;
+        }
+
+        delete res;
+        delete pstmt;
+
+        // Delete all data from the table
+        stmt = con->createStatement ();
+        query = "UPDATE " + string (pTableName) + " SET " + string (pColumnDataValue) + " WHERE " + string (pConditionData) + ";";
+
+        // Execute the query
+        stmt->execute (query);
+
+        delete stmt;
+        delete con;
+
+        return GOOD;
+
+    } catch (SQLException& e) {
+
+        bad_resp = e.what ();
+        len      = (ULong) strlen (bad_resp);
         pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
 
         UTF8ToUTF16 (pBadResponse, bad_resp, len);
