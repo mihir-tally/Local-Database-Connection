@@ -6,6 +6,6 @@ EXPORTS
 	DeleteTable
 	AlterTable
 	InsertData
-	DeleteAllData
+	DeleteData
 	ShowTableData
 	UpdateTableData
