@@ -54,7 +54,7 @@ HRESULT AlterTable (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultS
 
     localdatabase = ALLOC_TLocalDataBase(pResult, pResultSize);
 
-    localdatabase->AlterTable(pArgc, pArgv);
+    localdatabase->AlterTable (pArgc, pArgv);
 
     delete localdatabase;
     return S_OK;
@@ -72,13 +72,13 @@ HRESULT InsertData (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultS
     return S_OK;
 }
 
-HRESULT DeleteAllData (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize)
+HRESULT DeleteData (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize)
 {
         TLocalDataBase * localdatabase;
 
     localdatabase = ALLOC_TLocalDataBase (pResult, pResultSize);
 
-    localdatabase->DeleteAllData (pArgc, pArgv);
+    localdatabase->DeleteData (pArgc, pArgv);
 
     delete localdatabase;
     return S_OK;
@@ -959,24 +959,26 @@ end:
     return rc;
 }
 
-eGoodBad TLocalDataBase::DeleteAllData (Word pArgc, WStrPtr* pArgv)
+eGoodBad TLocalDataBase::DeleteData (Word pArgc, WStrPtr* pArgv)
 {
         AStrPtr    server                = nullptr;
         AStrPtr    username              = nullptr;
         AStrPtr    password              = nullptr;
         AStrPtr    databasename          = nullptr;
         AStrPtr    table_name            = nullptr;
+        AStrPtr    condition             = nullptr;
         StrPtr     bad_response          = nullptr;
         ULong      server_len;
         ULong      username_len;
         ULong      password_len;
         ULong      databasename_len;
         ULong      table_name_len;
+        ULong      condition_len;
         eGoodBad   rc                     = BAD;
 
-    if (pArgc != 5) {
+    if (pArgc != 5 || pArgc != 6) {
 
-        SetResult (INSUFFICIENT_PARAMS_DELETE_ALL_DATA);
+        SetResult (INSUFFICIENT_PARAMS_DELETE_DATA);
 
     }
     server_len = (ULong) _tcslen (pArgv[0]);
@@ -999,12 +1001,18 @@ eGoodBad TLocalDataBase::DeleteAllData (Word pArgc, WStrPtr* pArgv)
     table_name     = (AStrPtr )malloc ((table_name_len + 1) * sizeof (AChar));
     UTF16ToAscii (table_name, pArgv[4], table_name_len);
 
-    if (DeleteAllDataFromTable (server, username, password, databasename, table_name, bad_response) == BAD) {
+    if (pArgc == 6) {
+
+        condition_len = (ULong) _tcslen (pArgv[5]);
+        condition     = (AStrPtr) malloc ((condition_len + 1) * sizeof (AChar));
+        UTF16ToAscii (condition, pArgv[5], condition_len);
+    }
+    if (DeleteDataFromTable (pArgc, server, username, password, databasename, table_name, condition, bad_response) == BAD) {
 
         SetResult (bad_response);
         goto end;
     }
-    SetResult (ALL_DATA_DELETED);
+    SetResult (DATA_DELETED);
     rc = GOOD;
 end:
     free (server);
@@ -1013,6 +1021,7 @@ end:
     free (databasename);
     free (table_name);
     free (bad_response);
+    free (condition);
     return rc;
 }
 
@@ -1278,7 +1287,7 @@ eGoodBad TLocalDataBase::InsertDataIntoTable (AStrPtr pServer, AStrPtr pUserName
     }
 }
 
-eGoodBad TLocalDataBase::DeleteAllDataFromTable (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, StrPtr& pBadResponse)
+eGoodBad TLocalDataBase::DeleteDataFromTable (Word pArgc, AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pCondition,StrPtr& pBadResponse)
 {
         Driver *               driver      = nullptr;
         Connection *           con         = nullptr;
@@ -1356,7 +1365,16 @@ eGoodBad TLocalDataBase::DeleteAllDataFromTable (AStrPtr pServer, AStrPtr pUserN
 
         // Delete all data from the table
         stmt = con->createStatement ();
-        query = "DELETE FROM " + string (pTableName) + ";";
+
+        if (pArgc == 6) {
+
+            query = "DELETE FROM " + string (pTableName) + " WHERE " + string (pCondition) + ";";
+
+        } else {
+
+            query = "DELETE FROM " + string (pTableName) + ";";
+        }
+
 
         // Execute the query
         stmt->execute (query);

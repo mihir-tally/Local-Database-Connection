@@ -11,7 +11,7 @@ extern "C" {
 	HRESULT    DeleteTable      (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 	HRESULT    AlterTable       (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 	HRESULT    InsertData       (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
-	HRESULT    DeleteAllData    (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
+	HRESULT    DeleteData       (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 	HRESULT    ShowTableData    (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 	HRESULT    UpdateTableData  (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 }
