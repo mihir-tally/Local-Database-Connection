@@ -13,6 +13,7 @@ using namespace sql;
 #define DATA_INSERTED                          "Data Inserted Successfully"
 #define DATA_DELETED                           "Data Delete Successfully"
 #define TABLE_COLUMN_DATA_UPDATED              "Table Column Data is Successfully Updated"
+#define ADD_FOREIGN_KEY                        "Foreign key is added successfully"
 
 #define INSUFFICIENT_PARAMS_CREATEDB           "Insufficient TDL Parameters. Expected parameters are '<Server>:<User Name>:<Password>:<DataBase Name>'"
 #define INSUFFICIENT_PARAMS_CREATE_TABLE       "Insufficient TDL Parameters. Expected parameters for CreateTable are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Column Name>:<Column Data Type>'"
@@ -22,6 +23,7 @@ using namespace sql;
 #define INSUFFICIENT_PARAMS_DELETE_DATA        "Insufficient TDL Parameters. Expected parameters for DeleteAllData are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>'"
 #define INSUFFICIENT_PARAMS_SHOW_DATA          "Insufficient TDL Parameters. Expected parameters for ShowTableData are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Column Name 1(Optional)>:<Column Name 2(Optional)>'"
 #define INSUFFICIENT_PARAMS_UPDATE_COLUMN_DATA "Insufficient TDL Parameters. Expected parameters for UpdateTableData are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Column Name With Values>:<Condition>'"
+#define INSUFFICIENT_PARAMS_ADD_FOREIGN_KEY    "Insufficient TDL Parameters. Expected parameters for AddForeignKey are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Reference Table Name>:<Column Name>'"
 
 
 #define ALLOC_TLocalDataBase      new TLocalDataBase
@@ -41,6 +43,7 @@ inline              ~TLocalDataBase            ();
         eGoodBad    DeleteData                 (Word pArgc, WStrPtr* pArgv);
         eGoodBad    ShowTableData              (Word pArgc, WStrPtr* pArgv);
         eGoodBad    UpdateTableData            (Word pArgc, WStrPtr* pArgv);
+        eGoodBad    AddForeignKey               (Word pArgc, WStrPtr* pArgv);
     private:
 
         eGoodBad    DataBase                   (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, eBool pCreateDb, StrPtr& pBadResponse);
@@ -60,6 +63,9 @@ inline              ~TLocalDataBase            ();
 
         eGoodBad    UpdateColumnData           (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pColumnDataValue, 
                                                 AStrPtr pConditionData, StrPtr& pBadResponse);
+
+        eGoodBad    AddForeignKey              (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName,
+                                                AStrPtr pReferenceTableName, AStrPtr pColumnName, StrPtr& pBadResponse);
 
         void        SetResult                  (CWStrPtr pVal);
         void        SetResult                  (CAStrPtr pVal);
