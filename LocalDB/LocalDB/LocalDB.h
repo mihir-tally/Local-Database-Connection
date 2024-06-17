@@ -14,6 +14,7 @@ extern "C" {
 	HRESULT    DeleteData       (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 	HRESULT    ShowTableData    (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 	HRESULT    UpdateTableData  (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
+	HRESULT    AddForeignKey    (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 }
 
 #endif
