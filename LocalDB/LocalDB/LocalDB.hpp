@@ -5,6 +5,11 @@
 using namespace std;
 using namespace sql;
 
+#define MAX_PATH_LENGTH                         1024
+
+#define DATABASE_TABLE_DATA_FILE_NAME          _TEXT ("tallyprime_sql_data.json")
+#define DLL_FILE_NAME                          _TEXT ("LocalDB.dll")
+
 #define DATABASE_CREATED                       "Database Created Successfully"
 #define DATABASE_DELETED                       "Database Deleted Successfully"
 #define TABLE_CREATED                          "Table Created Successfully"
@@ -12,8 +17,10 @@ using namespace sql;
 #define TABLE_ALTERED                          "Table Altered Successfully"
 #define DATA_INSERTED                          "Data Inserted Successfully"
 #define DATA_DELETED                           "Data Delete Successfully"
+#define SHOW_TABLE_COLUMN_DATA                 "Table Column Data fetched Successfully"
 #define TABLE_COLUMN_DATA_UPDATED              "Table Column Data is Successfully Updated"
 #define ADD_FOREIGN_KEY                        "Foreign key is added successfully"
+#define DROP_FOREIGN_KEY                       "Foreign key dropped successfully"
 
 #define INSUFFICIENT_PARAMS_CREATEDB           "Insufficient TDL Parameters. Expected parameters are '<Server>:<User Name>:<Password>:<DataBase Name>'"
 #define INSUFFICIENT_PARAMS_CREATE_TABLE       "Insufficient TDL Parameters. Expected parameters for CreateTable are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Column Name>:<Column Data Type>'"
@@ -43,7 +50,8 @@ inline              ~TLocalDataBase            ();
         eGoodBad    DeleteData                 (Word pArgc, WStrPtr* pArgv);
         eGoodBad    ShowTableData              (Word pArgc, WStrPtr* pArgv);
         eGoodBad    UpdateTableData            (Word pArgc, WStrPtr* pArgv);
-        eGoodBad    AddForeignKey               (Word pArgc, WStrPtr* pArgv);
+        eGoodBad    ForeignKey                 (Word pArgc, WStrPtr* pArgv);
+
     private:
 
         eGoodBad    DataBase                   (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, eBool pCreateDb, StrPtr& pBadResponse);
@@ -59,7 +67,7 @@ inline              ~TLocalDataBase            ();
 
         eGoodBad    DeleteDataFromTable        (Word pArgc, AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pCondition, StrPtr& pBadResponse);
         eGoodBad    ShowTableColumnData        (Word pArgc, AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pColumnName1, 
-                                                AStrPtr pColumnName2, StrPtr& pResult, StrPtr& pBadResponse);
+                                                AStrPtr pColumnName2, StrPtr& pBadResponse);
 
         eGoodBad    UpdateColumnData           (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pColumnDataValue, 
                                                 AStrPtr pConditionData, StrPtr& pBadResponse);
@@ -67,13 +75,20 @@ inline              ~TLocalDataBase            ();
         eGoodBad    AddForeignKey              (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName,
                                                 AStrPtr pReferenceTableName, AStrPtr pColumnName, StrPtr& pBadResponse);
 
+        eGoodBad   DropForeignKey              (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName,
+                                                AStrPtr pColumnName, StrPtr& pBadResponse);
+
         void        SetResult                  (CWStrPtr pVal);
         void        SetResult                  (CAStrPtr pVal);
+        eGoodBad    GetDllPath                 (Char * pDllPath);
+        eGoodBad    WriteResponeFile           (AStrPtr pResponseData, CStrPtr pFileName = nullptr);
         void        UTF8ToUTF16                (WStrPtr pDestination, CAStrPtr pSource, UInt32 pLength);
         void        UTF16ToAscii               (AStrPtr pDest, CWStrPtr pSrc, Long pSrcLen);
         void        AsciiToUTF16               (WStrPtr pDestination, CAStrPtr pSource, UInt32 pLength);
 
         StrPtr *    vResult;
         Long *      vResultSize;
+        StrPtr      vDllPath;
+        ULong       vDllPathLen;
 };
 #endif //LOCALDB_HPP
