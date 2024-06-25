@@ -1,0 +1,109 @@
+<!DOCTYPE Project SYSTEM "http://www.slickedit.com/dtd/vse/10.0/vpj.dtd">
+<Project
+	Version="10.0"
+	VendorName="SlickEdit"
+	WorkingDir=".">
+	<Config
+		Name="64 Bit"
+		OutputFile=""
+		CompilerConfigName="Latest Version"
+		ObjectDir="bin/release/">
+		<Menu>
+			<Target
+				Name="Build"
+				MenuCaption="&amp;Debug 64"
+				RunFromDir="%rw"
+				CaptureOutputWith="ProcessBuffer">
+				<Exec CmdLine="maya debug64"/>
+			</Target>
+			<Target
+				Name="Release 64"
+				MenuCaption="&amp;Release 64"
+				RunFromDir="%rw"
+				CaptureOutputWith="ProcessBuffer">
+				<Exec CmdLine="maya release64"/>
+			</Target>
+			<Target
+				Name="ReBuild"
+				MenuCaption="&amp;FullClean Debug 64"
+				RunFromDir="%rw"
+				CaptureOutputWith="ProcessBuffer">
+				<Exec CmdLine="maya fullclean debug64"/>
+			</Target>
+			<Target
+				Name="FullClean Release 64"
+				MenuCaption="&amp;FullClean Release 64"
+				RunFromDir="%rw"
+				CaptureOutputWith="ProcessBuffer">
+				<Exec CmdLine="maya fullclean release64"/>
+			</Target>
+		</Menu>
+	</Config>
+	<Config
+		Name="32 Bit"
+		OutputFile=""
+		CompilerConfigName="Latest Version"
+		ObjectDir="bin/release/">
+		<Menu>
+			<Target
+				Name="Build"
+				MenuCaption="&amp;Debug 32"
+				RunFromDir="%rw"
+				CaptureOutputWith="ProcessBuffer">
+				<Exec CmdLine="maya debug32"/>
+			</Target>
+			<Target
+				Name="Release 32"
+				MenuCaption="&amp;Release 32"
+				CaptureOutputWith="ProcessBuffer"
+				RunFromDir="%rw">
+				<Exec CmdLine="maya release32"/>
+			</Target>
+			<Target
+				Name="ReBuild"
+				MenuCaption="&amp;Fullclean Debug 32"
+				RunFromDir="%rw"
+				CaptureOutputWith="ProcessBuffer">
+				<Exec CmdLine="maya fullclean debug32"/>
+			</Target>
+			<Target
+				Name="Fullclean Release 32"
+				MenuCaption="&amp;Fullclean Release 32"
+				RunFromDir="%rw"
+				CaptureOutputWith="ProcessBuffer">
+				<Exec CmdLine="maya fullclean release32"/>
+			</Target>
+		</Menu>
+	</Config>
+	<Rules Name="Compile">
+		<Rule
+			InputExts="*.s"
+			OutputExts="*.o"
+			LinkObject="1">
+			<Exec CmdLine='as -o "%bd%n.o" "%f"'/>
+		</Rule>
+	</Rules>
+	<Files>
+		<Folder
+			Name="Source Files"
+			Filters="*.c;*.C;*.cc;*.cpp;*.cp;*.cxx;*.prg;*.pas;*.dpr;*.asm;*.s;*.bas;*.java;*.cs;*.sc;*.e;*.cob;*.html;*.rc;*.tcl;*.py;*.pl"/>
+		<Folder
+			Name="Header Files"
+			Filters="*.h;*.H;*.hh;*.hpp;*.hxx;*.inc;*.sh;*.cpy;*.if">
+			<F
+				N="src/*.h"
+				Recurse="1"
+				Refilter="0"
+				Excludes=""/>
+		</Folder>
+		<Folder
+			Name="Resource Files"
+			Filters="*.ico;*.cur;*.dlg"/>
+		<Folder
+			Name="Bitmaps"
+			Filters="*.bmp"/>
+		<Folder
+			Name="Other Files"
+			Filters=""/>
+	</Files>
+</Project>

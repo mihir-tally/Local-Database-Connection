@@ -9,4 +9,4 @@ EXPORTS
 	DeleteData
 	ShowTableData
 	UpdateTableData
-	AddForeignKey
+	ForeignKey

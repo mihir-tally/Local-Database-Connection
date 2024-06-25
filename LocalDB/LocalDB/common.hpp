@@ -23,4 +23,10 @@
 #include "defines.h"
 #include "enum.h"
 
+#include "rapidschema.h"
+#include <stringbuffer.h>
+#include <writer.h>
+#include <prettywriter.h>
+#include <error/en.h>
+
 using namespace std;
