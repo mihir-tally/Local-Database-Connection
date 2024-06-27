@@ -15,6 +15,8 @@ extern "C" {
 	HRESULT    ShowTableData    (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 	HRESULT    UpdateTableData  (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 	HRESULT    ForeignKey       (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
+	HRESULT    ShowForeignKey   (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
+	HRESULT    Triggers         (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 }
 
 #endif

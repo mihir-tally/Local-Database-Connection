@@ -5,33 +5,37 @@
 using namespace std;
 using namespace sql;
 
-#define MAX_PATH_LENGTH                         1024
+#define MAX_PATH_LENGTH                                     1024
 
-#define DATABASE_TABLE_DATA_FILE_NAME          _TEXT ("tallyprime_sql_data.json")
-#define DLL_FILE_NAME                          _TEXT ("LocalDB.dll")
+#define DATABASE_TABLE_DATA_FILE_NAME                       _TEXT ("tallyprime_sql_data.json")
+#define DLL_FILE_NAME                                       _TEXT ("LocalDB.dll")
 
-#define DATABASE_CREATED                       "Database Created Successfully"
-#define DATABASE_DELETED                       "Database Deleted Successfully"
-#define TABLE_CREATED                          "Table Created Successfully"
-#define TABLE_DELETED                          "Table Deleted Successfully"
-#define TABLE_ALTERED                          "Table Altered Successfully"
-#define DATA_INSERTED                          "Data Inserted Successfully"
-#define DATA_DELETED                           "Data Delete Successfully"
-#define SHOW_TABLE_COLUMN_DATA                 "Table Column Data fetched Successfully"
-#define TABLE_COLUMN_DATA_UPDATED              "Table Column Data is Successfully Updated"
-#define ADD_FOREIGN_KEY                        "Foreign key is added successfully"
-#define DROP_FOREIGN_KEY                       "Foreign key dropped successfully"
+#define DATABASE_CREATED                                    "Database Created Successfully"
+#define DATABASE_DELETED                                    "Database Deleted Successfully"
+#define TABLE_CREATED                                       "Table Created Successfully"
+#define TABLE_DELETED                                       "Table Deleted Successfully"
+#define TABLE_ALTERED                                       "Table Altered Successfully"
+#define DATA_INSERTED                                       "Data Inserted Successfully"
+#define DATA_DELETED                                        "Data Delete Successfully"
+#define SHOW_TABLE_COLUMN_DATA                              "Table Column Data fetched Successfully"
+#define TABLE_COLUMN_DATA_UPDATED                           "Table Column Data is Successfully Updated"
+#define ADD_FOREIGN_KEY                                     "Foreign key is added successfully"
+#define DROP_FOREIGN_KEY                                    "Foreign key dropped successfully"
+#define SHOW_FOREIGN_KEY                                    "Foreign Key and fetched Successfully"
+#define CREATE_TRIGGER                                      "Trigger Created Successfully"
+#define DROP_TRIGGER                                        "Trigger dropped Successfully"
 
-#define INSUFFICIENT_PARAMS_CREATEDB           "Insufficient TDL Parameters. Expected parameters are '<Server>:<User Name>:<Password>:<DataBase Name>'"
-#define INSUFFICIENT_PARAMS_CREATE_TABLE       "Insufficient TDL Parameters. Expected parameters for CreateTable are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Column Name>:<Column Data Type>'"
-#define INSUFFICIENT_PARAMS_DELETE_TABLE       "Insufficient TDL Parameters. Expected parameters for DeleteTable are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>'"
-#define INSUFFICIENT_PARAMS_ALTER_TABLE        "Insufficient TDL Parameters. Expected parameters for AlterTable are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Column Name>:<Column Data Type>'"
-#define INSUFFICIENT_PARAMS_INSERT_DATA        "Insufficient TDL Parameters. Expected parameters for InsertData are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>':<Column Name>:<Column Value>"
-#define INSUFFICIENT_PARAMS_DELETE_DATA        "Insufficient TDL Parameters. Expected parameters for DeleteAllData are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>'"
-#define INSUFFICIENT_PARAMS_SHOW_DATA          "Insufficient TDL Parameters. Expected parameters for ShowTableData are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Column Name 1(Optional)>:<Column Name 2(Optional)>'"
-#define INSUFFICIENT_PARAMS_UPDATE_COLUMN_DATA "Insufficient TDL Parameters. Expected parameters for UpdateTableData are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Column Name With Values>:<Condition>'"
-#define INSUFFICIENT_PARAMS_ADD_FOREIGN_KEY    "Insufficient TDL Parameters. Expected parameters for AddForeignKey are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Reference Table Name>:<Column Name>'"
-
+#define INSUFFICIENT_PARAMS_CREATEDB                        "Insufficient TDL Parameters. Expected parameters are '<Server>:<User Name>:<Password>:<DataBase Name>'"
+#define INSUFFICIENT_PARAMS_CREATE_TABLE                    "Insufficient TDL Parameters. Expected parameters for CreateTable are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Column Name>:<Column Data Type>'"
+#define INSUFFICIENT_PARAMS_DELETE_TABLE                    "Insufficient TDL Parameters. Expected parameters for DeleteTable are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>'"
+#define INSUFFICIENT_PARAMS_ALTER_TABLE                     "Insufficient TDL Parameters. Expected parameters for AlterTable are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Column Name>:<Column Data Type>'"
+#define INSUFFICIENT_PARAMS_INSERT_DATA                     "Insufficient TDL Parameters. Expected parameters for InsertData are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>':<Column Name>:<Column Value>"
+#define INSUFFICIENT_PARAMS_DELETE_DATA                     "Insufficient TDL Parameters. Expected parameters for DeleteAllData are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>'"
+#define INSUFFICIENT_PARAMS_SHOW_DATA                       "Insufficient TDL Parameters. Expected parameters for ShowTableData are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Column Name 1(Optional)>:<Column Name 2(Optional)>'"
+#define INSUFFICIENT_PARAMS_UPDATE_COLUMN_DATA              "Insufficient TDL Parameters. Expected parameters for UpdateTableData are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Column Name With Values>:<Condition>'"
+#define INSUFFICIENT_PARAMS_ADD_FOREIGN_KEY                 "Insufficient TDL Parameters. Expected parameters for AddForeignKey are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Foreign Key Name>:<Reference Table Name>:<Column Name>'"
+#define INSUFFICIENT_PARAMS_SHOW_FOREIGN_KEY                "Insufficient TDL Parameters. Expected parameters for ShowForeignKey are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>'"
+#define INSUFFICIENT_PARAMS_TRIGGERS                        "Insufficient TDL Parameters. Expected parameters for TRIGGERS are '<Server>:<User Name>:<Password>:<DataBase Name>:<Trigger Name>:<Table Name>':<BEFORE/AFTER>:<INSERT/DELETE/UPDATE>:<Condition> (Optional)"
 
 #define ALLOC_TLocalDataBase      new TLocalDataBase
 
@@ -51,6 +55,8 @@ inline              ~TLocalDataBase            ();
         eGoodBad    ShowTableData              (Word pArgc, WStrPtr* pArgv);
         eGoodBad    UpdateTableData            (Word pArgc, WStrPtr* pArgv);
         eGoodBad    ForeignKey                 (Word pArgc, WStrPtr* pArgv);
+        eGoodBad    ShowForeignKey             (Word pArgc, WStrPtr* pArgv);
+        eGoodBad    Triggers                   (Word pArgc, WStrPtr* pArgv);
 
     private:
 
@@ -72,15 +78,21 @@ inline              ~TLocalDataBase            ();
         eGoodBad    UpdateColumnData           (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pColumnDataValue, 
                                                 AStrPtr pConditionData, StrPtr& pBadResponse);
 
-        eGoodBad    AddForeignKey              (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName,
-                                                AStrPtr pReferenceTableName, AStrPtr pColumnName, StrPtr& pBadResponse);
+        eGoodBad    AddForeignKey              (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pForeignKeyName,
+                                                AStrPtr pColumnName, AStrPtr pReferenceTableName, StrPtr& pBadResponse);
 
         eGoodBad   DropForeignKey              (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName,
-                                                AStrPtr pColumnName, StrPtr& pBadResponse);
+                                                AStrPtr pForeignKeyName, StrPtr& pBadResponse);
+
+        eGoodBad   ShowForeignKeyData          (Word pArgc, AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, StrPtr& pBadResponse);
+        eGoodBad   CreateTrigger               (Word pArgc, AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTriggerName, AStrPtr pTableName,
+                                                AStrPtr pActivationTime, AStrPtr pTriggerEvent, AStrPtr pTriggerCondition, StrPtr& pBadResponse);
+
+        eGoodBad   DropTrigger                 (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTriggerName, StrPtr& pBadResponse);
 
         void        SetResult                  (CWStrPtr pVal);
         void        SetResult                  (CAStrPtr pVal);
-        eGoodBad    GetDllPath                 (Char * pDllPath);
+        eGoodBad    GetDllPath                 ();
         eGoodBad    WriteResponeFile           (AStrPtr pResponseData, CStrPtr pFileName = nullptr);
         void        UTF8ToUTF16                (WStrPtr pDestination, CAStrPtr pSource, UInt32 pLength);
         void        UTF16ToAscii               (AStrPtr pDest, CWStrPtr pSrc, Long pSrcLen);
