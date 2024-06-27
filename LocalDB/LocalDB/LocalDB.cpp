@@ -84,9 +84,9 @@ HRESULT DeleteData (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultS
     return S_OK;
 }
 
-HRESULT ShowTableData(Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize)
+HRESULT ShowTableData (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize)
 {
-    TLocalDataBase* localdatabase;
+        TLocalDataBase * localdatabase;
 
     localdatabase = ALLOC_TLocalDataBase (pResult, pResultSize);
 
@@ -98,7 +98,7 @@ HRESULT ShowTableData(Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResul
 
 HRESULT UpdateTableData (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize)
 {
-    TLocalDataBase* localdatabase;
+        TLocalDataBase * localdatabase;
 
     localdatabase = ALLOC_TLocalDataBase (pResult, pResultSize);
 
@@ -110,11 +110,35 @@ HRESULT UpdateTableData (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pRe
 
 HRESULT ForeignKey (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize)
 {
-    TLocalDataBase * localdatabase;
+        TLocalDataBase * localdatabase;
 
     localdatabase = ALLOC_TLocalDataBase (pResult, pResultSize);
 
     localdatabase->ForeignKey (pArgc, pArgv);
+
+    delete localdatabase;
+    return S_OK;
+}
+
+HRESULT ShowForeignKey (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize)
+{
+        TLocalDataBase * localdatabase;
+
+    localdatabase = ALLOC_TLocalDataBase (pResult, pResultSize);
+
+    localdatabase->ShowForeignKey (pArgc, pArgv);
+
+    delete localdatabase;
+    return S_OK;
+}
+
+HRESULT Triggers (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize)
+{
+        TLocalDataBase * localdatabase;
+
+    localdatabase = ALLOC_TLocalDataBase (pResult, pResultSize);
+
+    localdatabase->Triggers (pArgc, pArgv);
 
     delete localdatabase;
     return S_OK;
@@ -126,6 +150,8 @@ TLocalDataBase::TLocalDataBase (StrPtr* pResult, Long* pResultSize)
     vResultSize = pResultSize;
     vDllPath    = nullptr;
     vDllPathLen = 0;
+
+    GetDllPath ();
 }
 
 TLocalDataBase::~TLocalDataBase ()
@@ -188,26 +214,27 @@ void TLocalDataBase::SetResult (CAStrPtr pVal)
     AsciiToUTF16 (*vResult, pVal, *vResultSize);
 }
 
-eGoodBad TLocalDataBase::GetDllPath (Char * pDllPath)
+eGoodBad TLocalDataBase::GetDllPath ()
 {
         HMODULE  module_handle;
+        Char     dll_path [MAX_PATH_LENGTH];
 
     module_handle = GetModuleHandle (DLL_FILE_NAME);
 
     if (module_handle != NULL) {
 
-        if (GetModuleFileName (module_handle, pDllPath, MAX_PATH_LENGTH) > 0) {
+        if (GetModuleFileName (module_handle, dll_path, MAX_PATH_LENGTH) > 0) {
 
-            StrPtr last_slash = _tcsrchr (pDllPath, '\\');
+            StrPtr last_slash = _tcsrchr (dll_path, '\\');
 
             if (last_slash != nullptr) {
 
                 *(last_slash + 1) = '\0';
 
-                vDllPathLen = (ULong)_tcslen(pDllPath) + 1;
+                vDllPathLen = (ULong)_tcslen(dll_path) + 1;
                 vDllPath = (StrPtr) malloc ((vDllPathLen) * sizeof(Char));
 
-                _tcscpy_s (vDllPath, vDllPathLen, pDllPath);
+                _tcscpy_s (vDllPath, vDllPathLen, dll_path);
 
                 return GOOD;
             }
@@ -218,27 +245,34 @@ eGoodBad TLocalDataBase::GetDllPath (Char * pDllPath)
 
 eGoodBad TLocalDataBase::WriteResponeFile (AStrPtr pResponseData, CStrPtr pFileName)
 {
-        HANDLE  file;
-        CStrPtr file_name                   = nullptr;
-        Char    dll_path [MAX_PATH_LENGTH];
-        ULong   num_bytes_written;
+        HANDLE     file;
+        CStrPtr    file_name                   = nullptr;
+        StrPtr     dll_path                    = nullptr;
+        ULong      num_bytes_written;
+        ULong      dll_path_len;
+
+    if (!vDllPath || !*vDllPath || vDllPathLen == 0) {
+
+        return BAD;
+    }
 
     file_name = pFileName ? pFileName : DATABASE_TABLE_DATA_FILE_NAME;
 
-    if (GetDllPath (dll_path) != BAD) {
+    dll_path_len = vDllPathLen + (ULong)_tcslen(file_name);
+    dll_path     = (StrPtr) malloc ((dll_path_len) * sizeof (Char));
 
-        _tcscat_s (dll_path, (vDllPathLen + (ULong)_tcslen (file_name)), file_name);
+    _tcscpy_s (dll_path, vDllPathLen, vDllPath);
+    _tcscat_s (dll_path, (vDllPathLen + (ULong)_tcslen (file_name)), file_name);
 
-        file = CreateFile (dll_path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    file = CreateFile (dll_path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
-        if (file == INVALID_HANDLE_VALUE)
-            return BAD;
+    if (file == INVALID_HANDLE_VALUE)
+        return BAD;
 
-        WriteFile (file, pResponseData, (ULong) strlen (pResponseData), &num_bytes_written, NULL);
+    WriteFile (file, pResponseData, (ULong) strlen (pResponseData), &num_bytes_written, NULL);
 
-        CloseHandle (file);
-    }
-
+    CloseHandle (file);
+    free (dll_path);
     return GOOD;
 }
 
@@ -1283,6 +1317,7 @@ eGoodBad TLocalDataBase::ForeignKey (Word pArgc, WStrPtr* pArgv)
         AStrPtr    password                = nullptr;
         AStrPtr    databasename            = nullptr;
         AStrPtr    table_name              = nullptr;
+        AStrPtr    foreign_key_name        = nullptr;
         AStrPtr    reference_table_name    = nullptr;
         AStrPtr    column_name             = nullptr;
         StrPtr     bad_response            = nullptr;
@@ -1291,11 +1326,12 @@ eGoodBad TLocalDataBase::ForeignKey (Word pArgc, WStrPtr* pArgv)
         ULong      password_len;
         ULong      databasename_len;
         ULong      table_name_len;
+        ULong      foreign_key_name_len;
         ULong      reference_table_name_len;
         ULong      column_name_len;
         eGoodBad   rc                      = BAD;
 
-    if (pArgc != 6 && pArgc != 7) {
+    if (pArgc != 6 && pArgc != 8) {
 
         SetResult (INSUFFICIENT_PARAMS_ADD_FOREIGN_KEY);
         return rc;
@@ -1321,17 +1357,21 @@ eGoodBad TLocalDataBase::ForeignKey (Word pArgc, WStrPtr* pArgv)
     table_name     = (AStrPtr) malloc ((table_name_len + 1) * sizeof (AChar));
     UTF16ToAscii (table_name, pArgv[4], table_name_len);
 
-    column_name_len = (ULong) _tcslen (pArgv[5]);
-    column_name     = (AStrPtr)malloc((column_name_len + 1) * sizeof (AChar));
-    UTF16ToAscii (column_name, pArgv[5], column_name_len);
+    foreign_key_name_len = (ULong) _tcslen (pArgv[5]);
+    foreign_key_name    = (AStrPtr) malloc ((foreign_key_name_len + 1) * sizeof (AChar));
+    UTF16ToAscii (foreign_key_name, pArgv[5], foreign_key_name_len);
 
-    if (pArgc == 7) {
+    if (pArgc == 8) {
 
-        reference_table_name_len = (ULong) _tcslen (pArgv[6]);
+        column_name_len = (ULong) _tcslen (pArgv[6]);
+        column_name     = (AStrPtr) malloc ((column_name_len + 1) * sizeof (AChar));
+        UTF16ToAscii (column_name, pArgv[6], column_name_len);
+
+        reference_table_name_len = (ULong) _tcslen (pArgv[7]);
         reference_table_name     = (AStrPtr) malloc ((reference_table_name_len + 1) * sizeof (AChar));
-        UTF16ToAscii (reference_table_name, pArgv[6], reference_table_name_len);
+        UTF16ToAscii (reference_table_name, pArgv[7], reference_table_name_len);
 
-        if (AddForeignKey (server, username, password, databasename, table_name, reference_table_name, column_name, bad_response) == BAD) {
+        if (AddForeignKey (server, username, password, databasename, table_name, foreign_key_name, column_name, reference_table_name, bad_response) == BAD) {
 
             SetResult (bad_response);
             goto end;
@@ -1340,7 +1380,7 @@ eGoodBad TLocalDataBase::ForeignKey (Word pArgc, WStrPtr* pArgv)
 
     } else {
 
-        if (DropForeignKey (server, username, password, databasename, table_name, column_name, bad_response) == BAD) {
+        if (DropForeignKey (server, username, password, databasename, table_name, foreign_key_name, bad_response) == BAD) {
 
             SetResult (bad_response);
             goto end;
@@ -1360,6 +1400,176 @@ end:
 
     if (reference_table_name) free (reference_table_name);
     if (bad_response)         free (bad_response);
+
+    return rc;
+}
+
+eGoodBad TLocalDataBase::ShowForeignKey (Word pArgc, WStrPtr* pArgv)
+{
+        AStrPtr    server              = nullptr;
+        AStrPtr    username            = nullptr;
+        AStrPtr    password            = nullptr;
+        AStrPtr    databasename        = nullptr;
+        AStrPtr    table_name          = nullptr;
+        StrPtr     bad_response        = nullptr;
+        ULong      server_len;
+        ULong      username_len;
+        ULong      password_len;
+        ULong      databasename_len;
+        ULong      table_name_len;
+        eGoodBad   rc                  = BAD;
+
+    if (pArgc != 4 && pArgc != 5) {
+
+        SetResult (INSUFFICIENT_PARAMS_SHOW_FOREIGN_KEY);
+        return rc;
+    }
+
+    server_len = (ULong) _tcslen (pArgv[0]);
+    server     = (AStrPtr) malloc ((server_len + 1) * sizeof (AChar));
+    UTF16ToAscii (server, pArgv[0], server_len);
+
+    username_len = (ULong) _tcslen (pArgv[1]);
+    username     = (AStrPtr) malloc ((username_len + 1) * sizeof (AChar));
+    UTF16ToAscii (username, pArgv[1], username_len);
+
+    password_len = (ULong) _tcslen (pArgv[2]);
+    password     = (AStrPtr) malloc ((password_len + 1) * sizeof (AChar));
+    UTF16ToAscii (password, pArgv[2], password_len);
+
+    databasename_len = (ULong) _tcslen (pArgv[3]);
+    databasename     = (AStrPtr) malloc ((databasename_len + 1) * sizeof (AChar));
+    UTF16ToAscii (databasename, pArgv[3], databasename_len);
+    
+    if (pArgc == 5) {
+
+        table_name_len = (ULong) _tcslen (pArgv[4]);
+        table_name     = (AStrPtr) malloc ((table_name_len + 1) * sizeof (AChar));
+        UTF16ToAscii (table_name, pArgv[4], table_name_len);
+    }
+
+    if (ShowForeignKeyData (pArgc, server, username, password, databasename, table_name, bad_response) == BAD) {
+
+        SetResult (bad_response);
+        goto end;
+    }
+    SetResult (SHOW_FOREIGN_KEY);
+
+    rc = GOOD;
+
+end:
+    free (server);
+    free (username);
+    free (password);
+    free (databasename);
+    if (table_name) free (table_name);
+    if (bad_response) free(bad_response);
+
+    return rc;
+}
+
+eGoodBad TLocalDataBase::Triggers (Word pArgc, WStrPtr* pArgv)
+{
+        AStrPtr    server               = nullptr;
+        AStrPtr    username             = nullptr;
+        AStrPtr    password             = nullptr;
+        AStrPtr    databasename         = nullptr;
+        AStrPtr    table_name           = nullptr;
+        AStrPtr    trigger_name         = nullptr;
+        AStrPtr    activation_time      = nullptr;
+        AStrPtr    trigger_event        = nullptr;
+        AStrPtr    trigger_condition    = nullptr;
+        StrPtr     bad_response         = nullptr;
+        ULong      server_len;
+        ULong      username_len;
+        ULong      password_len;
+        ULong      databasename_len;
+        ULong      table_name_len;
+        ULong      trigger_name_len;
+        ULong      activation_time_len;
+        ULong      trigger_event_len;
+        ULong      trigger_condition_len;
+        eGoodBad   rc                   = BAD;
+
+    if (pArgc != 5 && pArgc != 8 && pArgc != 9) {
+
+        SetResult (INSUFFICIENT_PARAMS_TRIGGERS);
+        return rc;
+    }
+
+    server_len = (ULong) _tcslen (pArgv[0]);
+    server     = (AStrPtr) malloc ((server_len + 1) * sizeof (AChar));
+    UTF16ToAscii (server, pArgv[0], server_len);
+
+    username_len = (ULong) _tcslen (pArgv[1]);
+    username     = (AStrPtr) malloc ((username_len + 1) * sizeof (AChar));
+    UTF16ToAscii (username, pArgv[1], username_len);
+
+    password_len = (ULong) _tcslen (pArgv[2]);
+    password     = (AStrPtr) malloc ((password_len + 1) * sizeof (AChar));
+    UTF16ToAscii (password, pArgv[2], password_len);
+
+    databasename_len = (ULong) _tcslen (pArgv[3]);
+    databasename     = (AStrPtr) malloc ((databasename_len + 1) * sizeof (AChar));
+    UTF16ToAscii (databasename, pArgv[3], databasename_len);
+
+    trigger_name_len = (ULong)_tcslen(pArgv[4]);
+    trigger_name     = (AStrPtr) malloc ((trigger_name_len + 1) * sizeof (AChar));
+    UTF16ToAscii (trigger_name, pArgv[4], trigger_name_len);
+
+    if (pArgc == 5) {
+
+        if (DropTrigger (server, username, password, databasename, trigger_name, bad_response) == BAD) {
+
+            SetResult (bad_response);
+            goto end;
+        }
+
+        SetResult (DROP_TRIGGER);
+
+    } else if (pArgc == 8 || pArgc == 9) {
+
+        table_name_len = (ULong) _tcslen (pArgv[5]);
+        table_name     = (AStrPtr) malloc ((table_name_len + 1) * sizeof (AChar));
+        UTF16ToAscii (table_name, pArgv[5], table_name_len);
+
+        activation_time_len = (ULong) _tcslen (pArgv[6]);
+        activation_time     = (AStrPtr) malloc ((activation_time_len + 1) * sizeof (AChar));
+        UTF16ToAscii (activation_time, pArgv[6], activation_time_len);
+
+        trigger_event_len = (ULong) _tcslen (pArgv[7]);
+        trigger_event     = (AStrPtr) malloc ((trigger_event_len + 1) * sizeof (AChar));
+        UTF16ToAscii (trigger_event, pArgv[7], trigger_event_len);
+
+        if (pArgc == 9) {
+
+            trigger_condition_len = (ULong) _tcslen (pArgv[8]);
+            trigger_condition     = (AStrPtr) malloc ((trigger_condition_len + 1) * sizeof (AChar));
+            UTF16ToAscii (trigger_condition, pArgv[8], trigger_condition_len);
+        }
+
+        if (CreateTrigger (pArgc, server, username, password, databasename, trigger_name, table_name, activation_time, trigger_event, trigger_condition, bad_response) == BAD) {
+
+            SetResult (bad_response);
+            goto end;
+        }
+
+        SetResult (CREATE_TRIGGER);
+    }
+
+    rc = GOOD;
+
+end:
+    free (server);
+    free (username);
+    free (password);
+    free (databasename);
+    free (trigger_name);
+    if (table_name)        free (table_name);
+    if (activation_time)   free (activation_time);
+    if (trigger_event)     free (trigger_event);
+    if (trigger_condition) free (trigger_condition);
+    if (bad_response)      free (bad_response);
 
     return rc;
 }
@@ -1446,7 +1656,7 @@ eGoodBad TLocalDataBase::InsertDataIntoTable (AStrPtr pServer, AStrPtr pUserName
         stmt = con->createStatement ();
 
         // Construct the SQL query to insert data into the table
-        query = "INSERT INTO " + string (pTableName) + " (" + string (pColumnNames) + ") VALUES (" + string (pValues) + ");";
+        query = "INSERT INTO " + string (pTableName) + " (" + string (pColumnNames) + ") VALUES " + string (pValues) + ";";
 
         // Execute the query
         stmt->execute (query);
@@ -1581,7 +1791,7 @@ eGoodBad TLocalDataBase::DeleteDataFromTable (Word pArgc, AStrPtr pServer, AStrP
     }
 }
 
-eGoodBad TLocalDataBase::ShowTableColumnData(Word pArgc, AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pColumn1, AStrPtr pColumn2, StrPtr& pBadResponse)
+eGoodBad TLocalDataBase::ShowTableColumnData (Word pArgc, AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pColumn1, AStrPtr pColumn2, StrPtr& pBadResponse)
 {
         Driver *               driver            = nullptr;
         Connection *           con               = nullptr;
@@ -1597,12 +1807,12 @@ eGoodBad TLocalDataBase::ShowTableColumnData(Word pArgc, AStrPtr pServer, AStrPt
 
     try {
 
-        driver = get_driver_instance();
-        con    = driver->connect(pServer, pUserName, pPassword);
+        driver = get_driver_instance ();
+        con    = driver->connect (pServer, pUserName, pPassword);
 
     } catch (SQLException& e) {
         
-        bad_resp     = e.what();
+        bad_resp     = e.what ();
         len          = (ULong) strlen (bad_resp);
         pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
         UTF8ToUTF16 (pBadResponse, bad_resp, len);
@@ -1724,7 +1934,16 @@ eGoodBad TLocalDataBase::ShowTableColumnData(Word pArgc, AStrPtr pServer, AStrPt
         json_document.Accept (writer);
 
         result_string = (AStrPtr) buffer.GetString ();
-        WriteResponeFile (result_string);
+
+        if (WriteResponeFile (result_string) == BAD) {
+
+            bad_resp     = "Failed to write data in file";
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof(Char));
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            return BAD;
+        }
 
         delete stmt;
         delete con;
@@ -1745,7 +1964,6 @@ eGoodBad TLocalDataBase::ShowTableColumnData(Word pArgc, AStrPtr pServer, AStrPt
         return BAD;
     }
 }
-
 
 eGoodBad TLocalDataBase::UpdateColumnData (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, 
                                            AStrPtr pColumnDataValue, AStrPtr pConditionData, StrPtr& pBadResponse)
@@ -1851,7 +2069,7 @@ eGoodBad TLocalDataBase::UpdateColumnData (AStrPtr pServer, AStrPtr pUserName, A
 }
 
 eGoodBad TLocalDataBase::AddForeignKey (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName,
-                                        AStrPtr pReferenceTableName, AStrPtr pColumnName, StrPtr& pBadResponse)
+                                        AStrPtr pForeignKeyName, AStrPtr pColumnName, AStrPtr pReferenceTableName, StrPtr& pBadResponse)
 {
         Driver *               driver      = nullptr;
         Connection *           con         = nullptr;
@@ -1944,7 +2162,7 @@ eGoodBad TLocalDataBase::AddForeignKey (AStrPtr pServer, AStrPtr pUserName, AStr
 
         // Execute the ALTER TABLE query to add foreign key constraint
         stmt  = con->createStatement ();
-        string query = "ALTER TABLE " + string (pTableName) + " ADD CONSTRAINT fk_" + string (pColumnName) + " FOREIGN KEY (" + string (pColumnName) + ") REFERENCES " + string (pReferenceTableName) + "(" + string (pColumnName) + ") ON DELETE CASCADE ON UPDATE CASCADE;";
+        string query = "ALTER TABLE " + string (pTableName) + " ADD CONSTRAINT " + string (pForeignKeyName) + " FOREIGN KEY (" + string (pColumnName) + ") REFERENCES " + string (pReferenceTableName) + "(" + string (pColumnName) + ") ON DELETE CASCADE ON UPDATE CASCADE;";
         stmt->execute (query);
 
         delete stmt;
@@ -1966,7 +2184,7 @@ eGoodBad TLocalDataBase::AddForeignKey (AStrPtr pServer, AStrPtr pUserName, AStr
 }
 
 eGoodBad TLocalDataBase::DropForeignKey (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName,
-                                         AStrPtr pColumnName, StrPtr& pBadResponse)
+                                         AStrPtr pForeignKeyName, StrPtr& pBadResponse)
 {
         Driver *               driver      = nullptr;
         Connection *           con         = nullptr;
@@ -1982,7 +2200,6 @@ eGoodBad TLocalDataBase::DropForeignKey (AStrPtr pServer, AStrPtr pUserName, ASt
         driver = get_driver_instance ();
         con    = driver->connect (pServer, pUserName, pPassword);
 
-        // Check connection
         if (!con) {
 
             bad_resp     = "Connection error";
@@ -1997,12 +2214,12 @@ eGoodBad TLocalDataBase::DropForeignKey (AStrPtr pServer, AStrPtr pUserName, ASt
         // Check if the database exists
         pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
         pstmt->setString (1, pDataBaseName);
-        res = pstmt->executeQuery ();
+        res   = pstmt->executeQuery ();
 
         if (!res->next ()) {
 
-            bad_resp = "Database does not exist";
-            len = (ULong) strlen (bad_resp);
+            bad_resp     = "Database does not exist";
+            len          = (ULong) strlen (bad_resp);
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
             UTF8ToUTF16 (pBadResponse, bad_resp, len);
             delete res;
@@ -2018,9 +2235,10 @@ eGoodBad TLocalDataBase::DropForeignKey (AStrPtr pServer, AStrPtr pUserName, ASt
         pstmt = con->prepareStatement ("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?");
         pstmt->setString (1, pDataBaseName);
         pstmt->setString (2, pTableName);
-        res   = pstmt->executeQuery ();
+        res  = pstmt->executeQuery ();
 
         if (!res->next ()) {
+
             bad_resp     = "Table does not exist";
             len          = (ULong) strlen (bad_resp);
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
@@ -2034,33 +2252,392 @@ eGoodBad TLocalDataBase::DropForeignKey (AStrPtr pServer, AStrPtr pUserName, ASt
         delete res;
         delete pstmt;
 
-        // Check if the foreign key constraint related to the specified column exists
-        pstmt = con->prepareStatement ("SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ? AND POSITION_IN_UNIQUE_CONSTRAINT IS NOT NULL");
+        // Check if the foreign key constraint exists
+        pstmt = con->prepareStatement ("SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND CONSTRAINT_NAME = ? AND CONSTRAINT_TYPE = 'FOREIGN KEY'");
         pstmt->setString (1, pDataBaseName);
         pstmt->setString (2, pTableName);
-        pstmt->setString (3, pColumnName);
-        res = pstmt->executeQuery ();
+        pstmt->setString (3, pForeignKeyName);
+        res  = pstmt->executeQuery ();
 
-        if (!res->next ()) {
+        if (!res->next()) {
 
-            bad_resp     = "Foreign key constraint for the specified column does not exist";
+            bad_resp     = "Foreign key constraint does not exist";
             len          = (ULong) strlen (bad_resp);
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+            UTF8ToUTF16(pBadResponse, bad_resp, len);
             delete res;
             delete pstmt;
             delete con;
             return BAD;
         }
 
-        string fk_name = res->getString ("CONSTRAINT_NAME");
-
         delete res;
         delete pstmt;
 
         // Execute the ALTER TABLE query to drop the foreign key constraint
         stmt  = con->createStatement ();
-        query = "ALTER TABLE " + string (pTableName) + " DROP FOREIGN KEY " + fk_name + ";";
+        query = "ALTER TABLE " + string (pTableName) + " DROP FOREIGN KEY " + string (pForeignKeyName) + ";";
+        stmt->execute (query);
+
+        delete stmt;
+        delete con;
+
+        return GOOD;
+
+    }
+    catch (SQLException& e) {
+
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+        delete stmt;
+        delete con;
+
+        return BAD;
+    }
+}
+
+eGoodBad TLocalDataBase::ShowForeignKeyData (Word pArgc, AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, 
+                                             AStrPtr pTableName, StrPtr& pBadResponse) 
+{
+        Driver *               driver            = nullptr;
+        Connection *           con               = nullptr;
+        Statement *            stmt              = nullptr;
+        PreparedStatement *    pstmt             = nullptr;
+        ResultSet *            res               = nullptr;
+        ResultSetMetaData *    meta_data         = nullptr;
+        AStrPtr                result_string;
+        string                 query;
+        CAStrPtr               bad_resp          = nullptr;
+        ULong                  len;
+        int                    column_count;
+
+    try {
+
+        driver = get_driver_instance ();
+        con    = driver->connect (pServer, pUserName, pPassword);
+
+        pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
+        pstmt->setString (1, pDataBaseName);
+        res   = pstmt->executeQuery ();
+
+        if (!res->next ()) {
+
+            bad_resp     = "Database does not exist";
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            delete res;
+            delete pstmt;
+            delete con;
+            return BAD;
+        }
+
+        delete res;
+        delete pstmt;
+        pstmt = nullptr;
+
+        con->setSchema (pDataBaseName);
+
+        if (pArgc == 5) {
+
+            pstmt = con->prepareStatement ("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?");
+            pstmt->setString (1, pDataBaseName);
+            pstmt->setString (2, pTableName);
+            res  = pstmt->executeQuery ();
+
+            if (!res->next ()) {
+
+                bad_resp     = "Table does not exist";
+                len          = (ULong) strlen (bad_resp);
+                pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+                UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+                delete res;
+                delete pstmt;
+                delete con;
+
+                return BAD;
+            }
+
+            delete res;
+            delete pstmt;
+            pstmt = nullptr;
+        }
+
+        stmt = con->createStatement ();
+
+        if (pArgc == 5) {
+
+            query = "SELECT table_name, constraint_name, column_name, referenced_table_name, referenced_column_name FROM information_schema.key_column_usage WHERE table_schema = '" + string(pDataBaseName) + "' AND table_name = '" + string(pTableName) + "' AND referenced_table_name IS NOT NULL;";
+        
+        } else {
+
+            query = "SELECT table_name, constraint_name, column_name, referenced_table_name, referenced_column_name FROM information_schema.key_column_usage WHERE table_schema = '" + string(pDataBaseName) + "' AND referenced_table_name IS NOT NULL;";
+        }
+
+        res          = stmt->executeQuery (query);
+        meta_data    = res->getMetaData ();
+        column_count = meta_data->getColumnCount ();
+
+        rapidjson::Document json_document;
+        json_document.SetObject ();
+
+        rapidjson::Value data_array (rapidjson::kArrayType);
+
+        while (res->next ()) {
+
+            rapidjson::Value row_object (rapidjson::kObjectType);
+
+            for (int j = 1; j <= column_count; ++j) {
+
+                rapidjson::Value column_name;
+                rapidjson::Value column_value;
+
+                column_name.SetString (meta_data->getColumnName (j).c_str (), json_document.GetAllocator ());
+                column_value.SetString (res->getString (j).c_str (), json_document.GetAllocator ());
+                row_object.AddMember (column_name, column_value, json_document.GetAllocator ());
+            }
+            data_array.PushBack (row_object, json_document.GetAllocator ());
+        }
+
+        json_document.AddMember ("ForeignKeyTable", data_array, json_document.GetAllocator ());
+
+        // Convert JSON document to string
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer<rapidjson::StringBuffer> writer (buffer);
+        json_document.Accept (writer);
+
+        result_string = (AStrPtr) buffer.GetString ();
+
+        if (WriteResponeFile (result_string) == BAD) {
+
+            bad_resp     = "Failed to write data in file";
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            return BAD;
+        }
+
+        delete stmt;
+        delete con;
+        delete res;
+
+        return GOOD;
+
+    } catch (SQLException& e) {
+
+        bad_resp     = e.what ();
+        len          = (ULong) strlen( bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+        delete stmt;
+        delete con;
+
+        return BAD;
+    }
+}
+
+eGoodBad TLocalDataBase::CreateTrigger (Word pArgc, AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTriggerName,
+                                        AStrPtr pTableName, AStrPtr pActivationTime, AStrPtr pTriggerEvent, AStrPtr pTriggerCondition, StrPtr& pBadResponse)
+{
+        Driver *               driver      = nullptr;
+        Connection *           con         = nullptr;
+        PreparedStatement *    pstmt       = nullptr;
+        Statement *            stmt        = nullptr;
+        ResultSet *            res         = nullptr;
+        string                 query;
+        CAStrPtr               bad_resp    = nullptr;
+        ULong                  len;
+
+    try {
+
+        driver = get_driver_instance ();
+        con    = driver->connect (pServer, pUserName, pPassword);
+
+        // Check if connection succeeded
+        if (!con) {
+
+            bad_resp     = "Failed to connect to database";
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+            return BAD;
+        }
+
+    } catch (SQLException& e) {
+
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+        return BAD;
+    }
+
+    try {
+        // Check if database exists
+        pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
+        pstmt->setString (1, pDataBaseName);
+        res  = pstmt->executeQuery ();
+
+        if (!res->next()) {
+
+            bad_resp     = "Database does not exist";
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            delete res;
+            delete pstmt;
+            delete con;
+            return BAD;
+        }
+
+        delete res;
+        delete pstmt;
+        pstmt = nullptr;
+
+        // Check if trigger exists
+        con->setSchema (pDataBaseName);
+        pstmt = con->prepareStatement ("SELECT TRIGGER_NAME FROM INFORMATION_SCHEMA.TRIGGERS WHERE TRIGGER_SCHEMA = ? AND TRIGGER_NAME = ?");
+        pstmt->setString (1, pDataBaseName);
+        pstmt->setString (2, pTriggerName);
+        res  = pstmt->executeQuery ();
+
+        if (res->next ()) {
+            // Trigger already exists
+            bad_resp     = "Trigger already exists";
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            delete res;
+            delete pstmt;
+            delete con;
+            return BAD;
+        }
+
+        delete res;
+        delete pstmt;
+        pstmt = nullptr;
+
+        // Create trigger query
+        stmt = con->createStatement ();
+
+        if (pArgc == 8) {
+
+            query = "CREATE TRIGGER " + string (pTriggerName) + " " + string (pActivationTime) + " " +string (pTriggerEvent) + " ON " +string (pTableName) +" FOR EACH ROW " + " SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '" + 
+                     string (pTableName) + " does not support creation/deletion/updation of data';";
+
+        } else {
+
+            query = "CREATE TRIGGER " + string (pTriggerName) + " " + string (pActivationTime) + " " + string (pTriggerEvent) + " ON " + string (pTableName) + " FOR EACH ROW " + string (pTriggerCondition) + ";";
+        }
+
+        // Execute the query
+        stmt->execute (query);
+
+        delete stmt;
+        delete con;
+
+        return GOOD;
+
+    } catch (SQLException& e) {
+
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+        delete pstmt;
+        delete stmt;
+        delete con;
+        return BAD;
+    }
+}
+
+eGoodBad TLocalDataBase::DropTrigger (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTriggerName, StrPtr& pBadResponse)
+{
+        Driver *               driver      = nullptr;
+        Connection *           con         = nullptr;
+        Statement *            stmt        = nullptr;
+        PreparedStatement *    pstmt       = nullptr;
+        ResultSet *            res         = nullptr;
+        string                 query;
+        CAStrPtr               bad_resp    = nullptr;
+        ULong                  len;
+
+    try {
+
+        driver = get_driver_instance ();
+        con    = driver->connect (pServer, pUserName, pPassword);
+
+    } catch (SQLException& e) {
+
+        bad_resp     = e.what();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof(Char));
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+        return BAD;
+    }
+
+    try {
+
+        pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
+        pstmt->setString (1, pDataBaseName);
+        res  = pstmt->executeQuery ();
+
+        if (!res->next ()) {
+
+            bad_resp     = "Database does not exist";
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            delete res;
+            delete pstmt;
+            delete con;
+            return BAD;
+        }
+
+        delete res;
+        delete pstmt;
+        pstmt = nullptr;
+
+        // Check if the trigger exists
+        con->setSchema (pDataBaseName);
+        pstmt = con->prepareStatement ("SELECT TRIGGER_NAME FROM INFORMATION_SCHEMA.TRIGGERS WHERE TRIGGER_SCHEMA = ? AND TRIGGER_NAME = ?");
+        pstmt->setString (1, pDataBaseName);
+        pstmt->setString (2, pTriggerName);
+        res  = pstmt->executeQuery ();
+
+        if (!res->next()) {
+            // Trigger does not exist
+            bad_resp     = "Trigger does not exist";
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+            UTF8ToUTF16(pBadResponse, bad_resp, len);
+
+            delete res;
+            delete pstmt;
+            delete con;
+            return BAD;
+        }
+
+        delete res;
+        delete pstmt;
+
+        // Drop the trigger
+        stmt  = con->createStatement ();
+        query = "DROP TRIGGER " + string (pTriggerName) + ";";
+
+        // Execute the query
         stmt->execute (query);
 
         delete stmt;
@@ -2077,7 +2654,6 @@ eGoodBad TLocalDataBase::DropForeignKey (AStrPtr pServer, AStrPtr pUserName, ASt
 
         delete stmt;
         delete con;
-
         return BAD;
     }
 }
