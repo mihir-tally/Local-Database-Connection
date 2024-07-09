@@ -144,6 +144,18 @@ HRESULT Triggers (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSiz
     return S_OK;
 }
 
+HRESULT GeneralLog (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize)
+{
+        TLocalDataBase* localdatabase;
+
+    localdatabase = ALLOC_TLocalDataBase (pResult, pResultSize);
+
+    localdatabase->GeneralLog (pArgc, pArgv);
+
+    delete localdatabase;
+    return S_OK;
+}
+
 TLocalDataBase::TLocalDataBase (StrPtr* pResult, Long* pResultSize)
 {
     vResult     = pResult;
@@ -1574,6 +1586,94 @@ end:
     return rc;
 }
 
+eGoodBad TLocalDataBase::GeneralLog (Word pArgc, WStrPtr* pArgv)
+{
+        AStrPtr    server                   = nullptr;
+        AStrPtr    username                 = nullptr;
+        AStrPtr    password                 = nullptr;
+        AStrPtr    databasename             = nullptr;
+        AStrPtr    action_type              = nullptr;
+        AStrPtr    enable_log_query         = nullptr;
+        CAStrPtr   successful_message       = nullptr;
+        StrPtr     bad_response             = nullptr;
+        ULong      server_len;
+        ULong      username_len;
+        ULong      password_len;
+        ULong      databasename_len;
+        ULong      action_type_len;
+        ULong      successful_message_len;
+        eGoodBad   rc                       = BAD;
+
+    if (pArgc != 5) {
+
+        SetResult (INSUFFICIENT_PARAMS_GENERAL_LOG);
+        return rc;
+    }
+
+    server_len = (ULong) _tcslen (pArgv[0]);
+    server     = (AStrPtr) malloc ((server_len + 1) * sizeof (AChar));
+    UTF16ToAscii (server, pArgv[0], server_len);
+
+    username_len = (ULong) _tcslen (pArgv[1]);
+    username     = (AStrPtr) malloc ((username_len + 1) * sizeof (AChar));
+    UTF16ToAscii (username, pArgv[1], username_len);
+
+    password_len = (ULong) _tcslen (pArgv[2]);
+    password     = (AStrPtr) malloc ((password_len + 1) * sizeof (AChar));
+    UTF16ToAscii (password, pArgv[2], password_len);
+
+    databasename_len = (ULong) _tcslen (pArgv[3]);
+    databasename     = (AStrPtr) malloc ((databasename_len + 1) * sizeof (AChar));
+    UTF16ToAscii (databasename, pArgv[3], databasename_len);
+
+    action_type_len = (ULong) _tcslen (pArgv[4]);
+    action_type     = (AStrPtr) malloc ((action_type_len + 1) * sizeof (AChar));
+    UTF16ToAscii (action_type, pArgv[4], action_type_len);
+
+    if (_stricmp (action_type, "Enable") == 0) {
+
+        vActionType        = ACTION_TYPE_ENABLE;
+        successful_message = GENERAL_LOG_ENABLE;
+
+    }
+    else if (_stricmp (action_type, "Disable") == 0) {
+
+        vActionType        = ACTION_TYPE_DISABLE;
+        successful_message = GENERAL_LOG_DISABLE;
+
+    }
+    else if (_stricmp (action_type, "Delete") == 0) {
+
+        vActionType        = ACTION_TYPE_DELETE;
+        successful_message = GENERAL_LOG_DELETE_LOG_DATA;
+
+    } else {
+
+        SetResult (TDL_ERROR_INCORRECT_ACTION_TYPE);
+        goto end;
+    }
+
+    if (SetGeneralLog (server, username, password, databasename, vActionType, bad_response) == BAD) {
+
+        SetResult (bad_response);
+        goto end;
+    }
+
+    SetResult (successful_message);
+
+    rc = GOOD;
+
+end:
+    free (server);
+    free (username);
+    free (password);
+    free (databasename);
+    free (action_type);
+    if (bad_response) free (bad_response);
+
+    return rc;
+}
+
 eGoodBad TLocalDataBase::InsertDataIntoTable (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pColumnNames, AStrPtr pValues, StrPtr& pBadResponse)
 {
         Driver*               driver      = nullptr;
@@ -1659,6 +1759,7 @@ eGoodBad TLocalDataBase::InsertDataIntoTable (AStrPtr pServer, AStrPtr pUserName
         query = "INSERT INTO " + string (pTableName) + " (" + string (pColumnNames) + ") VALUES " + string (pValues) + ";";
 
         // Execute the query
+
         stmt->execute (query);
 
         delete stmt;
@@ -1804,14 +1905,15 @@ eGoodBad TLocalDataBase::ShowTableColumnData (Word pArgc, AStrPtr pServer, AStrP
         CAStrPtr               bad_resp          = nullptr;
         ULong                  len;
         int                    column_count;
+        eBool                  is_general_log    = FALSE;
 
     try {
 
         driver = get_driver_instance ();
-        con    = driver->connect (pServer, pUserName, pPassword);
+        con = driver->connect (pServer, pUserName, pPassword);
 
     } catch (SQLException& e) {
-        
+
         bad_resp     = e.what ();
         len          = (ULong) strlen (bad_resp);
         pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
@@ -1822,53 +1924,65 @@ eGoodBad TLocalDataBase::ShowTableColumnData (Word pArgc, AStrPtr pServer, AStrP
 
     try {
 
-        pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
-        pstmt->setString (1, pDataBaseName);
-        res   = pstmt->executeQuery ();
+        if (strcmp (pTableName, "mysql.general_log") == 0) {
 
-        if (!res->next ()) {
+            is_general_log = TRUE;
+        }
 
-            bad_resp      = "Database does not exist";
-            len          = (ULong) strlen (bad_resp);
-            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+        if (!is_general_log) {
+
+            pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
+            pstmt->setString (1, pDataBaseName);
+            res = pstmt->executeQuery ();
+
+            if (!res->next ()) {
+
+                bad_resp     = "Database does not exist";
+                len          = (ULong) strlen (bad_resp);
+                pBadResponse = (StrPtr) malloc ((len + 1) * sizeof(Char));
+                UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+                delete res;
+                delete pstmt;
+                delete con;
+                return BAD;
+            }
 
             delete res;
             delete pstmt;
-            delete con;
-            return BAD;
-        }
+            pstmt = nullptr;
 
-        delete res;
-        delete pstmt;
-        pstmt = nullptr;
+            con->setSchema (pDataBaseName);
+            pstmt = con->prepareStatement ("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?");
+            pstmt->setString (1, pDataBaseName);
+            pstmt->setString (2, pTableName);
+            res = pstmt->executeQuery ();
 
-        con->setSchema (pDataBaseName);
-        pstmt = con->prepareStatement ("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?");
-        pstmt->setString (1, pDataBaseName);
-        pstmt->setString (2, pTableName);
-        res = pstmt->executeQuery ();
+            if (!res->next ()) {
 
-        if (!res->next ()) {
+                bad_resp     = "Table does not exist";
+                len          = (ULong) strlen (bad_resp);
+                pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+                UTF8ToUTF16 (pBadResponse, bad_resp, len);
 
-            bad_resp     = "Table does not exist";
-            len          = (ULong) strlen (bad_resp);
-            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+                delete res;
+                delete pstmt;
+                delete con;
+                return BAD;
+            }
 
             delete res;
             delete pstmt;
-            delete con;
-            return BAD;
+            pstmt = nullptr;
         }
-
-        delete res;
-        delete pstmt;
-        pstmt = nullptr;
 
         stmt = con->createStatement ();
 
-        if (pArgc == 6) {
+        if (is_general_log) {
+
+            query = "SELECT * FROM " + string (pTableName);
+
+        } else if (pArgc == 6) {
 
             query = "SELECT " + string (pColumn1) + " FROM " + string (pTableName);
 
@@ -1933,13 +2047,13 @@ eGoodBad TLocalDataBase::ShowTableColumnData (Word pArgc, AStrPtr pServer, AStrP
         rapidjson::Writer<rapidjson::StringBuffer> writer (buffer);
         json_document.Accept (writer);
 
-        result_string = (AStrPtr) buffer.GetString ();
+        result_string = (AStrPtr)buffer.GetString ();
 
         if (WriteResponeFile (result_string) == BAD) {
 
             bad_resp     = "Failed to write data in file";
             len          = (ULong) strlen (bad_resp);
-            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof(Char));
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
             UTF8ToUTF16 (pBadResponse, bad_resp, len);
 
             return BAD;
@@ -1953,8 +2067,8 @@ eGoodBad TLocalDataBase::ShowTableColumnData (Word pArgc, AStrPtr pServer, AStrP
 
     } catch (SQLException& e) {
 
-        bad_resp = e.what ();
-        len = (ULong) strlen (bad_resp);
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
         pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
 
         UTF8ToUTF16 (pBadResponse, bad_resp, len);
@@ -2643,6 +2757,107 @@ eGoodBad TLocalDataBase::DropTrigger (AStrPtr pServer, AStrPtr pUserName, AStrPt
         delete stmt;
         delete con;
 
+        return GOOD;
+
+    } catch (SQLException& e) {
+
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+        delete stmt;
+        delete con;
+        return BAD;
+    }
+}
+
+eGoodBad TLocalDataBase::SetGeneralLog (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, eActionType pLogAction,
+                                        StrPtr& pBadResponse) 
+{
+        Driver *               driver      = nullptr;
+        Connection *           con         = nullptr;
+        Statement *            stmt        = nullptr;
+        PreparedStatement *    pstmt       = nullptr;
+        ResultSet *            res         = nullptr;
+        string                 query;
+        CAStrPtr               bad_resp    = nullptr;
+        ULong                  len;
+
+    try {
+
+        driver = get_driver_instance ();
+        con    = driver->connect (pServer, pUserName, pPassword);
+
+    } catch (SQLException& e) {
+
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+        return BAD;
+    }
+
+    try {
+
+        pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
+        pstmt->setString (1, pDataBaseName);
+        res = pstmt->executeQuery ();
+
+        if (!res->next ()) {
+
+            bad_resp     = "Database does not exist";
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            delete res;
+            delete pstmt;
+            delete con;
+            return BAD;
+        }
+
+        delete res;
+        delete pstmt;
+        pstmt = nullptr;
+
+        // Set the schema
+        con->setSchema (pDataBaseName);
+
+        stmt = con->createStatement ();
+
+        switch (pLogAction) {
+
+            case ACTION_TYPE_ENABLE:
+
+                // Enable general log and set log output to table
+                stmt->execute ("SET global general_log = 1;");
+                stmt->execute ("SET global log_output = 'table';");
+                break;
+
+            case ACTION_TYPE_DISABLE:
+
+                stmt->execute ("SET global general_log = 0;");
+                break;
+
+            case ACTION_TYPE_DELETE:
+                // Delete general log data
+                stmt->execute ("truncate table mysql.general_log;");
+                break;
+
+            default:
+                // Invalid action type
+                bad_resp     = TDL_ERROR_INCORRECT_ACTION_TYPE;
+                len          = (ULong) strlen (bad_resp);
+                pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+                UTF8ToUTF16 (pBadResponse, bad_resp, len);
+                delete stmt;
+                delete con;
+                return BAD;
+        }
+
+        delete stmt;
+        delete con;
         return GOOD;
 
     } catch (SQLException& e) {

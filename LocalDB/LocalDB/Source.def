@@ -12,3 +12,4 @@ EXPORTS
 	ForeignKey
 	ShowForeignKey
 	Triggers
+	GeneralLog

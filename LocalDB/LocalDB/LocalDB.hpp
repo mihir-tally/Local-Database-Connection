@@ -24,6 +24,10 @@ using namespace sql;
 #define SHOW_FOREIGN_KEY                                    "Foreign Key and fetched Successfully"
 #define CREATE_TRIGGER                                      "Trigger Created Successfully"
 #define DROP_TRIGGER                                        "Trigger dropped Successfully"
+#define GENERAL_LOG_ENABLE                                  "General Log Enable Successfully"
+#define GENERAL_LOG_DISABLE                                 "General Log Disable Successfully"
+#define GENERAL_LOG_DELETE_LOG_DATA                         "General Log Data is Successfully Deleted"
+#define TDL_ERROR_INCORRECT_ACTION_TYPE                     "Incorrect Action Type Provided"
 
 #define INSUFFICIENT_PARAMS_CREATEDB                        "Insufficient TDL Parameters. Expected parameters are '<Server>:<User Name>:<Password>:<DataBase Name>'"
 #define INSUFFICIENT_PARAMS_CREATE_TABLE                    "Insufficient TDL Parameters. Expected parameters for CreateTable are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Column Name>:<Column Data Type>'"
@@ -36,6 +40,15 @@ using namespace sql;
 #define INSUFFICIENT_PARAMS_ADD_FOREIGN_KEY                 "Insufficient TDL Parameters. Expected parameters for AddForeignKey are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Foreign Key Name>:<Reference Table Name>:<Column Name>'"
 #define INSUFFICIENT_PARAMS_SHOW_FOREIGN_KEY                "Insufficient TDL Parameters. Expected parameters for ShowForeignKey are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>'"
 #define INSUFFICIENT_PARAMS_TRIGGERS                        "Insufficient TDL Parameters. Expected parameters for TRIGGERS are '<Server>:<User Name>:<Password>:<DataBase Name>:<Trigger Name>:<Table Name>':<BEFORE/AFTER>:<INSERT/DELETE/UPDATE>:<Condition> (Optional)"
+#define INSUFFICIENT_PARAMS_GENERAL_LOG                     "Insufficient TDL Parameters. Expected parameters for TRIGGERS are '<Server>:<User Name>:<Password>:<DataBase Name>:<Enable/Disable/Delete>"
+
+enum eActionType {
+
+    ACTION_TYPE_UNKNOWN = 0,
+    ACTION_TYPE_ENABLE,
+    ACTION_TYPE_DISABLE,
+    ACTION_TYPE_DELETE,
+};
 
 #define ALLOC_TLocalDataBase      new TLocalDataBase
 
@@ -57,6 +70,7 @@ inline              ~TLocalDataBase            ();
         eGoodBad    ForeignKey                 (Word pArgc, WStrPtr* pArgv);
         eGoodBad    ShowForeignKey             (Word pArgc, WStrPtr* pArgv);
         eGoodBad    Triggers                   (Word pArgc, WStrPtr* pArgv);
+        eGoodBad    GeneralLog                 (Word pArgc, WStrPtr* pArgv);
 
     private:
 
@@ -89,6 +103,7 @@ inline              ~TLocalDataBase            ();
                                                 AStrPtr pActivationTime, AStrPtr pTriggerEvent, AStrPtr pTriggerCondition, StrPtr& pBadResponse);
 
         eGoodBad   DropTrigger                 (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTriggerName, StrPtr& pBadResponse);
+        eGoodBad   SetGeneralLog               (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, eActionType pLogAction, StrPtr& pBadResponse);
 
         void        SetResult                  (CWStrPtr pVal);
         void        SetResult                  (CAStrPtr pVal);
@@ -100,7 +115,10 @@ inline              ~TLocalDataBase            ();
 
         StrPtr *    vResult;
         Long *      vResultSize;
+
         StrPtr      vDllPath;
         ULong       vDllPathLen;
+
+        eActionType vActionType;
 };
 #endif //LOCALDB_HPP
