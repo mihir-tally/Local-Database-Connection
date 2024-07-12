@@ -210,11 +210,11 @@ void TLocalDataBase::AsciiToUTF16 (WStrPtr pDestination, CAStrPtr pSource, UInt3
 
 void TLocalDataBase::SetResult (CWStrPtr pVal)
 {
-    *vResultSize = (Long) wcslen (pVal) + 1;
+    *vResultSize = (Long) wcslen(pVal) + 1;
 
     *vResult = static_cast<WStrPtr> (CoTaskMemAlloc (*vResultSize * sizeof (WChar)));
 
-    memcpy (*vResult, pVal, *vResultSize * sizeof (WChar));
+    memcpy (*vResult, pVal, *vResultSize * sizeof(WChar));
 }
 
 void TLocalDataBase::SetResult (CAStrPtr pVal)
@@ -224,6 +224,229 @@ void TLocalDataBase::SetResult (CAStrPtr pVal)
     *vResult = static_cast<WStrPtr> (CoTaskMemAlloc (*vResultSize * sizeof (WChar)));
 
     AsciiToUTF16 (*vResult, pVal, *vResultSize);
+}
+
+void TLocalDataBase::RemoveSpacesAroundComma (AStrPtr pStr)
+{
+        Long  i;
+        Long  j;
+        Long  str_len;
+        Long  space_count;
+
+    i = 0;
+    j = 0;
+    space_count = 0;
+
+    if (!pStr || !*pStr) {
+
+        return;
+    }
+
+    str_len = (Long) strlen (pStr);
+
+    for (ULong i = 0; i < str_len; i++) {
+
+        if (pStr[i] == ' ' && (pStr[i + 1] == ',' || pStr[i + 1] == ' ')) {
+
+            continue;
+        }
+
+        pStr[j++] = pStr[i];
+
+        if (pStr[i] == ',' && pStr[i + 1] == ' ') {
+
+            space_count = 1;
+
+            while (pStr[i + space_count] == ' ') {
+
+                space_count++;
+            }
+
+            i += space_count - 1;
+        }
+    }
+
+    pStr[j] = '\0';
+}
+
+Long TLocalDataBase::CountCommaOccurrence (AStrPtr pStr)
+{
+        Long comma_count;
+
+    comma_count = 0;
+
+    if (!*pStr || !pStr) {
+
+        return -1;
+    }
+
+    while (*pStr != '\0') {
+
+        if (*pStr == ',') {
+
+            comma_count++;
+        }
+
+        pStr++;
+    }
+
+    return comma_count;
+}
+
+Long TLocalDataBase::CountBraces (AStrPtr pStr)
+{
+        ULong braces_count;
+        ULong in_braces; // Flag to check if inside {}
+        ULong i;
+
+    braces_count = 0;
+    in_braces    = 0;
+    i            = 0;
+
+    if (!pStr || !*pStr) {
+
+        return -1;  // Invalid input
+    }
+
+    while (pStr[i] != '\0') {
+
+        if (pStr[i] == '{') {
+
+            in_braces = 1;
+
+        }
+        else if (pStr[i] == '}') {
+
+            if (in_braces) {
+
+                braces_count++;
+                in_braces = 0;
+            }
+        }
+        i++;
+    }
+    return braces_count;
+}
+
+Long TLocalDataBase::CountCommaBetweenBraces (AStrPtr pStr)
+{
+        Long comma_operator_count;
+
+    comma_operator_count = 0;
+
+    if (!pStr || !*pStr) {
+
+        return -1;  // Invalid input
+    }
+
+    while (*pStr && *(pStr + 1)) {
+
+        if (*pStr == '}' && *(pStr + 1) == ',' && *(pStr + 2) == '{') {
+
+            comma_operator_count++;
+            pStr++;  // Move to the next character after '}'
+        }
+        pStr++;  // Move to the next character
+    }
+
+    return comma_operator_count;
+}
+
+void TLocalDataBase::ExtractDetailsFromCSV(AStrPtr * pArray, ULong pArraySize, AStrPtr pData, ULong* pDataCount)
+{
+        AStrPtr    str            = nullptr;
+        AStrPtr    context        = nullptr; // for strtok_s
+        ULong      num_of_data;
+
+    *pDataCount = 0;
+
+    if (!pData || !*pData || !pArray) {
+
+        return;
+    }
+
+    str         = strtok_s( pData, ",", &context); // Using strtok_s instead of strtok
+    num_of_data = 0;
+
+    while (str != nullptr && num_of_data < pArraySize) {
+
+        pArray[num_of_data] = (AStrPtr) malloc (strlen(str) + 1); // Allocate memory for each string
+
+        if (pArray[num_of_data] != nullptr) {
+
+            strcpy_s (pArray[num_of_data], strlen (str) + 1, str); // Copy the string
+            num_of_data++;
+            (*pDataCount)++;
+        }
+        else {
+            // Handle allocation failure
+            break;
+        }
+        str = strtok_s (nullptr, ",", &context); // Using strtok_s instead of strtok
+    }
+}
+
+void TLocalDataBase::ExtractDataBetweenBraces (AStrPtr * pArray, ULong pArraySize, AStrPtr pData, ULong * pDataCount)
+{
+        CAStrPtr    start    = nullptr;
+        CAStrPtr    end      = nullptr;
+        AStrPtr     data     = nullptr;
+
+    if (!pArray || pArraySize == 0 || !pData || !*pData) {
+
+        return;
+    }
+
+    start       = pData;
+    *pDataCount = 0;
+
+    while ((start = strchr (start, '{')) != nullptr && *pDataCount < pArraySize) {
+
+        end = strchr (start, '}');
+
+        if (end == nullptr) {
+
+            break; // No closing brace found
+        }
+
+        // Move the pointers to the actual data
+        start++;
+        size_t len = end - start;
+
+        
+        data = (AStrPtr) malloc (len + 1);
+
+        if (data == nullptr) {
+
+            return;
+        }
+        
+        // Copy the data between the braces
+        strncpy(data, start, len);
+        data[len] = '\0';
+
+        // Store the extracted data in the pArray array
+        pArray[*pDataCount] = data;
+        (*pDataCount)++;
+
+        // Move past this closing brace
+        start = end + 1;
+    }
+}
+
+void TLocalDataBase::FreeArrayDataAndArray (AStrPtr * pArray, ULong pArraySize)
+{
+
+    if (!pArray || pArraySize == 0) {
+
+        return;
+    }
+
+    for (ULong i = 0; i < pArraySize; i++) {
+
+        free (pArray[i]);
+    }
+    free (pArray);
 }
 
 eGoodBad TLocalDataBase::GetDllPath ()
@@ -665,7 +888,6 @@ end:
     return rc;
 }
 
-
 eGoodBad TLocalDataBase::CreateLocalTable (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pColumnName, AStrPtr pColumnDataType, StrPtr& pBadResponse)
 {
         Driver *               driver;
@@ -1022,22 +1244,37 @@ eGoodBad TLocalDataBase::AlterLocalTable (AStrPtr pServer, AStrPtr pUserName, AS
 
 eGoodBad TLocalDataBase::InsertData (Word pArgc, WStrPtr* pArgv)
 {
-        AStrPtr    server               = nullptr;
-        AStrPtr    username             = nullptr;
-        AStrPtr    password             = nullptr;
-        AStrPtr    databasename         = nullptr;
-        AStrPtr    table_name           = nullptr;
-        AStrPtr    column_names         = nullptr;
-        AStrPtr    values               = nullptr;
-        StrPtr     bad_response         = nullptr;
-        ULong      server_len;
-        ULong      username_len;
-        ULong      password_len;
-        ULong      databasename_len;
-        ULong      table_name_len;
-        ULong      column_names_len;
-        ULong      values_len;
-        eGoodBad   rc                  = BAD;
+        AStrPtr      server                 = nullptr;
+        AStrPtr      username               = nullptr;
+        AStrPtr      password               = nullptr;
+        AStrPtr      databasename           = nullptr;
+        AStrPtr      table_name             = nullptr;
+        AStrPtr      column_names           = nullptr;
+        AStrPtr      values                 = nullptr;
+        AStrPtr *    table_names_array      = nullptr;
+        AStrPtr *    column_names_array     = nullptr;
+        AStrPtr *    column_values_array    = nullptr;
+        StrPtr       bad_response           = nullptr;
+        ULong        server_len;
+        ULong        username_len;
+        ULong        password_len;
+        ULong        databasename_len;
+        ULong        table_name_len;
+        ULong        column_names_len;
+        ULong        values_len;
+        ULong        table_count;
+        ULong        column_count_braces;
+        ULong        values_count_braces;
+        ULong        column_count_comma;
+        ULong        values_count_comma;
+        ULong        table_names_data_count;
+        ULong        column_names_data_count;
+        ULong        values_data_count;
+        eGoodBad     rc                    = BAD;
+
+    table_names_data_count  = 0;
+    column_names_data_count = 0;
+    values_data_count       = 0;
 
     if (pArgc != 7) {
 
@@ -1055,11 +1292,16 @@ eGoodBad TLocalDataBase::InsertData (Word pArgc, WStrPtr* pArgv)
 
     password_len = (ULong) _tcslen (pArgv[2]);
     password     = (AStrPtr) malloc ((password_len + 1) * sizeof (AChar));
-    UTF16ToAscii (password, pArgv[2], password_len);
+    UTF16ToAscii( password, pArgv[2], password_len);
 
     databasename_len = (ULong) _tcslen (pArgv[3]);
     databasename     = (AStrPtr) malloc ((databasename_len + 1) * sizeof (AChar));
     UTF16ToAscii (databasename, pArgv[3], databasename_len);
+
+    if (!*pArgv[4] || !*pArgv[5] || !*pArgv[6]) {
+
+        goto end;
+    }
 
     table_name_len = (ULong) _tcslen (pArgv[4]);
     table_name     = (AStrPtr) malloc ((table_name_len + 1) * sizeof (AChar));
@@ -1073,11 +1315,41 @@ eGoodBad TLocalDataBase::InsertData (Word pArgc, WStrPtr* pArgv)
     values     = (AStrPtr) malloc ((values_len + 1) * sizeof (AChar));
     UTF16ToAscii (values, pArgv[6], values_len);
 
-    if (InsertDataIntoTable (server, username, password, databasename, table_name, column_names, values, bad_response) == BAD) {
+    RemoveSpacesAroundComma (table_name);
+    RemoveSpacesAroundComma (column_names);
+    RemoveSpacesAroundComma (values);
+
+    table_count         = CountCommaOccurrence (table_name);
+    column_count_braces = CountBraces (column_names);
+    values_count_braces = CountBraces (values);
+    column_count_comma  = CountCommaBetweenBraces (column_names);
+    values_count_comma  = CountCommaBetweenBraces (values);
+
+    // here + 1 in table count because if user give one data then CountCommaOccurrence will give 0
+    // here + 1 in column_count_comma and values_count_comma because if user give one data then CountCommaBetweenBraces will give 0
+    if (column_count_braces == 0 || values_count_braces == 0 || column_count_braces != column_count_comma + 1
+        || values_count_braces != values_count_comma + 1 || table_count + 1 != column_count_braces
+        || column_count_braces != values_count_braces) {
+
+        SetResult (INCORRECT_NUM_OF_DATA_PROVIDED);
+        goto end;
+    }
+    //here + 1 because if user give one data then CountBraces will give 0
+    table_names_array = (AStrPtr *) malloc ((table_count + 1) * sizeof (AStrPtr));
+    ExtractDetailsFromCSV (table_names_array, table_count + 1, table_name, &table_names_data_count);
+
+    column_names_array = (AStrPtr *) malloc ((column_count_braces) * sizeof (AStrPtr));
+    ExtractDataBetweenBraces (column_names_array, column_count_braces, column_names, &column_names_data_count);
+
+    column_values_array = (AStrPtr *) malloc ((values_count_braces) * sizeof (AStrPtr));
+    ExtractDataBetweenBraces (column_values_array, values_count_braces, values, &values_data_count);
+
+    if (InsertDataIntoTable (server, username, password, databasename, table_names_array, column_names_array, column_values_array, table_count + 1, bad_response) == BAD) {
 
         SetResult (bad_response);
         goto end;
     }
+
     SetResult (DATA_INSERTED);
     rc = GOOD;
 end:
@@ -1088,6 +1360,9 @@ end:
     free (table_name);
     free (column_names);
     free (values);
+    FreeArrayDataAndArray (table_names_array, table_names_data_count);
+    FreeArrayDataAndArray (column_names_array, column_names_data_count);
+    FreeArrayDataAndArray (column_values_array, values_data_count);
     if (bad_response) free (bad_response);
 
     return rc;
@@ -1674,9 +1949,9 @@ end:
     return rc;
 }
 
-eGoodBad TLocalDataBase::InsertDataIntoTable (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pColumnNames, AStrPtr pValues, StrPtr& pBadResponse)
+eGoodBad TLocalDataBase::InsertDataIntoTable (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr * pTableNameArray, AStrPtr * pColumnNamesArray, AStrPtr * pValuesArray, ULong ArraySize, StrPtr& pBadResponse)
 {
-        Driver*               driver      = nullptr;
+        Driver *              driver      = nullptr;
         Connection *          con         = nullptr;
         Statement *           stmt        = nullptr;
         PreparedStatement *   pstmt       = nullptr;
@@ -1685,10 +1960,20 @@ eGoodBad TLocalDataBase::InsertDataIntoTable (AStrPtr pServer, AStrPtr pUserName
         CAStrPtr              bad_resp    = nullptr;
         ULong                 len;
 
+    // Check if ArraySize is 0
+    if (ArraySize == 0) {
+            
+        bad_resp     = "No Data to Insert";   
+        len          = (ULong) strlen (bad_resp);      
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));       
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+        return BAD;    
+    }
     try {
         
         driver = get_driver_instance ();
         con    = driver->connect (pServer, pUserName, pPassword);
+        con->setAutoCommit (false); // Set auto-commit to false
 
     } catch (SQLException& e) {
 
@@ -1716,6 +2001,7 @@ eGoodBad TLocalDataBase::InsertDataIntoTable (AStrPtr pServer, AStrPtr pUserName
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
 
             UTF8ToUTF16 (pBadResponse, bad_resp, len);
+            con->setAutoCommit (true); // Enable auto-commit after commit
 
             delete res;
             delete pstmt;
@@ -1729,42 +2015,48 @@ eGoodBad TLocalDataBase::InsertDataIntoTable (AStrPtr pServer, AStrPtr pUserName
 
         // Check if the table exists
         con->setSchema (pDataBaseName);
-        pstmt = con->prepareStatement ("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?");
-        pstmt->setString (1, pDataBaseName);
-        pstmt->setString (2, pTableName);
-        res   = pstmt->executeQuery ();
 
-        if (!res->next ()) {
+        for (ULong i = 0; i < ArraySize; i++) {
 
-            // Table does not exist
-            bad_resp     = "Table does not exist";
-            len          = (ULong) strlen (bad_resp);
-            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+            pstmt = con->prepareStatement ("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?");
+            pstmt->setString (1, pDataBaseName);
+            pstmt->setString (2, pTableNameArray[i]);
+            res = pstmt->executeQuery ();
 
-            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+            if (!res->next ()) {
+
+                // Table does not exist
+                bad_resp     = "Table does not exist";
+                len          = (ULong) strlen (bad_resp);
+                pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+                UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+                con->rollback (); // Rollback the transaction in case of an error
+                con->setAutoCommit (true); // Enable auto-commit after commit
+
+                delete res;
+                delete pstmt;
+                delete con;
+                return BAD;
+            }
 
             delete res;
             delete pstmt;
+
+            stmt = con->createStatement ();
+
+            // Construct the SQL query to insert data into the table
+            query = "INSERT INTO " + string (pTableNameArray[i]) + " " + string (pColumnNamesArray[i]) + " VALUES " + string (pValuesArray[i]) + ";";
+
+            // Execute the query
+            stmt->execute (query);
+
             delete stmt;
-            delete con;
-            return BAD;
         }
-
-        delete res;
-        delete pstmt;
-
-        stmt = con->createStatement ();
-
-        // Construct the SQL query to insert data into the table
-        query = "INSERT INTO " + string (pTableName) + " (" + string (pColumnNames) + ") VALUES " + string (pValues) + ";";
-
-        // Execute the query
-
-        stmt->execute (query);
-
-        delete stmt;
+        con->commit (); // Commit the transaction
+        con->setAutoCommit (true); // Enable auto-commit after commit
         delete con;
-
         return GOOD;
 
     } catch (SQLException& e) {
@@ -1774,6 +2066,11 @@ eGoodBad TLocalDataBase::InsertDataIntoTable (AStrPtr pServer, AStrPtr pUserName
         pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
 
         UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+        if (con != nullptr) {
+
+            con->rollback (); // Rollback the transaction in case of an error
+        }
 
         delete stmt;
         delete con;
