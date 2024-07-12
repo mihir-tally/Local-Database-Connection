@@ -28,6 +28,7 @@ using namespace sql;
 #define GENERAL_LOG_DISABLE                                 "General Log Disable Successfully"
 #define GENERAL_LOG_DELETE_LOG_DATA                         "General Log Data is Successfully Deleted"
 #define TDL_ERROR_INCORRECT_ACTION_TYPE                     "Incorrect Action Type Provided"
+#define INCORRECT_NUM_OF_DATA_PROVIDED                      "Incorrect Number of Table Name/Column Name/Column Data provided"
 
 #define INSUFFICIENT_PARAMS_CREATEDB                        "Insufficient TDL Parameters. Expected parameters are '<Server>:<User Name>:<Password>:<DataBase Name>'"
 #define INSUFFICIENT_PARAMS_CREATE_TABLE                    "Insufficient TDL Parameters. Expected parameters for CreateTable are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Column Name>:<Column Data Type>'"
@@ -82,8 +83,8 @@ inline              ~TLocalDataBase            ();
                                                 AStrPtr pColumnDataType, StrPtr& pBadResponse);
 
         eGoodBad    DeleteLocalTable           (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, StrPtr& pBadResponse);
-        eGoodBad    InsertDataIntoTable        (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pColumnNames, 
-                                                AStrPtr pValues, StrPtr& pBadResponse);
+        eGoodBad    InsertDataIntoTable        (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr * pTableNameArray, AStrPtr * pColumnNamesArray, 
+                                                AStrPtr * pValuesArray, ULong ArraySize, StrPtr& pBadResponse);
 
         eGoodBad    DeleteDataFromTable        (Word pArgc, AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pCondition, StrPtr& pBadResponse);
         eGoodBad    ShowTableColumnData        (Word pArgc, AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pColumnName1, 
@@ -104,6 +105,14 @@ inline              ~TLocalDataBase            ();
 
         eGoodBad   DropTrigger                 (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTriggerName, StrPtr& pBadResponse);
         eGoodBad   SetGeneralLog               (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, eActionType pLogAction, StrPtr& pBadResponse);
+
+        void       RemoveSpacesAroundComma     (AStrPtr pStr);
+        Long       CountCommaOccurrence        (AStrPtr pStr);
+        Long       CountBraces                 (AStrPtr pStr);
+        Long       CountCommaBetweenBraces     (AStrPtr pStr);
+        void       ExtractDetailsFromCSV       (AStrPtr* pArray, ULong pArraySize, AStrPtr pData, ULong* pDataCount);
+        void       ExtractDataBetweenBraces    (AStrPtr* pArray, ULong pArraySize, AStrPtr pData, ULong* pDataCount);
+        void       FreeArrayDataAndArray       (AStrPtr* pArray, ULong pArraySize);
 
         void        SetResult                  (CWStrPtr pVal);
         void        SetResult                  (CAStrPtr pVal);
