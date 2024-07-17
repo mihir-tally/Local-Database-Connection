@@ -2070,6 +2070,7 @@ eGoodBad TLocalDataBase::InsertDataIntoTable (AStrPtr pServer, AStrPtr pUserName
         if (con != nullptr) {
 
             con->rollback (); // Rollback the transaction in case of an error
+            con->setAutoCommit (true); // Enable auto-commit after commit
         }
 
         delete stmt;
