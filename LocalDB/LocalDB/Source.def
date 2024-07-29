@@ -13,3 +13,4 @@ EXPORTS
 	ShowForeignKey
 	Triggers
 	GeneralLog
+	MysqlJoin

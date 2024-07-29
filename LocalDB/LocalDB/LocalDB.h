@@ -18,6 +18,7 @@ extern "C" {
 	HRESULT    ShowForeignKey    (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 	HRESULT    Triggers          (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 	HRESULT    GeneralLog        (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
+	HRESULT    MysqlJoin         (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize);
 }
 
 #endif
