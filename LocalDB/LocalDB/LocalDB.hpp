@@ -10,6 +10,7 @@ using namespace sql;
 #define DATABASE_TABLE_DATA_FILE_NAME                       _TEXT ("tallyprime_sql_data.json")
 #define DLL_FILE_NAME                                       _TEXT ("LocalDB.dll")
 
+#define DATABASE_NOT_EXIST                                  "Database does not exist"
 #define DATABASE_CREATED                                    "Database Created Successfully"
 #define DATABASE_DELETED                                    "Database Deleted Successfully"
 #define TABLE_CREATED                                       "Table Created Successfully"
@@ -27,7 +28,17 @@ using namespace sql;
 #define GENERAL_LOG_ENABLE                                  "General Log Enable Successfully"
 #define GENERAL_LOG_DISABLE                                 "General Log Disable Successfully"
 #define GENERAL_LOG_DELETE_LOG_DATA                         "General Log Data is Successfully Deleted"
+#define INNER_JOIN_EXECUTED                                 "Inner Join Query Executed Successfully"
+#define LEFT_JOIN_EXECUTED                                  "Left Join Query Executed Successfully"
+#define RIGHT_JOIN_EXECUTED                                 "Right Join Query Executed Successfully"
+#define CROSS_JOIN_EXECUTED                                 "Cross Join Query Executed Successfully"
+#define DELETE_JOIN_EXECUTED                                "Delete Join Query Executed Successfully"
+#define EQUI_JOIN_EXECUTED                                  "Equi Join Query Executed Successfully"
+#define NATURAL_JOIN_EXECUTED                               "Natural Join Query Executed Successfully"
+#define UPDATE_JOIN_EXECUTED                                "Update Join Query Executed Successfully"
+
 #define TDL_ERROR_INCORRECT_ACTION_TYPE                     "Incorrect Action Type Provided"
+#define TDL_ERROR_INCORRECT_MYSQL_JOIN_TYPE                 "Incorrect Mysql Join Type Provided"
 #define INCORRECT_NUM_OF_DATA_PROVIDED                      "Incorrect Number of Table Name/Column Name/Column Data provided"
 
 #define INSUFFICIENT_PARAMS_CREATEDB                        "Insufficient TDL Parameters. Expected parameters are '<Server>:<User Name>:<Password>:<DataBase Name>'"
@@ -41,7 +52,8 @@ using namespace sql;
 #define INSUFFICIENT_PARAMS_ADD_FOREIGN_KEY                 "Insufficient TDL Parameters. Expected parameters for AddForeignKey are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>:<Foreign Key Name>:<Reference Table Name>:<Column Name>'"
 #define INSUFFICIENT_PARAMS_SHOW_FOREIGN_KEY                "Insufficient TDL Parameters. Expected parameters for ShowForeignKey are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>'"
 #define INSUFFICIENT_PARAMS_TRIGGERS                        "Insufficient TDL Parameters. Expected parameters for TRIGGERS are '<Server>:<User Name>:<Password>:<DataBase Name>:<Trigger Name>:<Table Name>':<BEFORE/AFTER>:<INSERT/DELETE/UPDATE>:<Condition> (Optional)"
-#define INSUFFICIENT_PARAMS_GENERAL_LOG                     "Insufficient TDL Parameters. Expected parameters for TRIGGERS are '<Server>:<User Name>:<Password>:<DataBase Name>:<Enable/Disable/Delete>"
+#define INSUFFICIENT_PARAMS_GENERAL_LOG                     "Insufficient TDL Parameters. Expected parameters for GeneralLog are '<Server>:<User Name>:<Password>:<DataBase Name>:<Enable/Disable/Delete>"
+#define INSUFFICIENT_PARAMS_MYSQL_JOIN                      "Insufficient TDL Parameters. Expected parameters for MysqlJoin are '<Server>:<User Name>:<Password>:<DataBase Name>:<Select Condition>:<From/Set Condition>:<Table Name>:<On Condition>:<Where Condition>"
 
 enum eActionType {
 
@@ -49,6 +61,19 @@ enum eActionType {
     ACTION_TYPE_ENABLE,
     ACTION_TYPE_DISABLE,
     ACTION_TYPE_DELETE,
+};
+
+enum eJoinType {
+
+    UNKNOWN_JOIN_TYPE = 0,
+    INNER_JOIN_TYPE,
+    LEFT_JOIN_TYPE,
+    RIGHT_JOIN_TYPE,
+    CROSS_JOIN_TYPE,
+    DELETE_JOIN_TYPE,
+    EQUI_JOIN_TYPE,
+    NATURAL_JOIN_TYPE,
+    UPDATE_JOIN_TYPE,
 };
 
 #define ALLOC_TLocalDataBase      new TLocalDataBase
@@ -72,6 +97,7 @@ inline              ~TLocalDataBase            ();
         eGoodBad    ShowForeignKey             (Word pArgc, WStrPtr* pArgv);
         eGoodBad    Triggers                   (Word pArgc, WStrPtr* pArgv);
         eGoodBad    GeneralLog                 (Word pArgc, WStrPtr* pArgv);
+        eGoodBad    MysqlJoin                  (Word pArgc, WStrPtr* pArgv);
 
     private:
 
@@ -105,6 +131,8 @@ inline              ~TLocalDataBase            ();
 
         eGoodBad   DropTrigger                 (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTriggerName, StrPtr& pBadResponse);
         eGoodBad   SetGeneralLog               (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, eActionType pLogAction, StrPtr& pBadResponse);
+        eGoodBad   PerformMysqlJoin            (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, eJoinType pJoinType, AStrPtr pSelectCondition, AStrPtr pSetOrFromCondtion, AStrPtr* pTableNameArray,
+                                                ULong pTableNameArraySize, AStrPtr* pOnConditionArray, ULong pOnConditionArraySize, AStrPtr pWhereCondition, StrPtr& pBadResponse);
 
         void       RemoveSpacesAroundComma     (AStrPtr pStr);
         Long       CountCommaOccurrence        (AStrPtr pStr);
@@ -129,5 +157,6 @@ inline              ~TLocalDataBase            ();
         ULong       vDllPathLen;
 
         eActionType vActionType;
+        eJoinType   vJoinType;
 };
 #endif //LOCALDB_HPP

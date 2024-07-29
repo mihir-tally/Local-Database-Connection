@@ -146,11 +146,23 @@ HRESULT Triggers (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSiz
 
 HRESULT GeneralLog (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize)
 {
-        TLocalDataBase* localdatabase;
+        TLocalDataBase * localdatabase;
 
     localdatabase = ALLOC_TLocalDataBase (pResult, pResultSize);
 
     localdatabase->GeneralLog (pArgc, pArgv);
+
+    delete localdatabase;
+    return S_OK;
+}
+
+HRESULT MysqlJoin (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize)
+{
+        TLocalDataBase * localdatabase;
+
+    localdatabase = ALLOC_TLocalDataBase (pResult, pResultSize);
+
+    localdatabase->MysqlJoin (pArgc, pArgv);
 
     delete localdatabase;
     return S_OK;
@@ -634,7 +646,7 @@ eGoodBad TLocalDataBase::DataBase (AStrPtr pServer, AStrPtr pUserName, AStrPtr p
 
             if (!db_exists) {
 
-                bad_resp     = "Database does not exist";
+                bad_resp     = DATABASE_NOT_EXIST;
                 len          = (ULong) strlen (bad_resp);
                 pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
 
@@ -924,7 +936,7 @@ eGoodBad TLocalDataBase::CreateLocalTable (AStrPtr pServer, AStrPtr pUserName, A
 
         if (!res->next ()) {
 
-            bad_resp     = "Database does not exist";
+            bad_resp     = DATABASE_NOT_EXIST;
             len          = (ULong) strlen (bad_resp);
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof(Char));
 
@@ -1029,7 +1041,7 @@ eGoodBad TLocalDataBase::DeleteLocalTable (AStrPtr pServer, AStrPtr pUserName, A
 
         if (!res->next ()) {
 
-            bad_resp     = "Database does not exist";
+            bad_resp     = DATABASE_NOT_EXIST;
             len          = (ULong) strlen (bad_resp);
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
 
@@ -1136,7 +1148,7 @@ eGoodBad TLocalDataBase::AlterLocalTable (AStrPtr pServer, AStrPtr pUserName, AS
 
         if (!res->next ()) {
 
-            bad_resp     = "Database does not exist";
+            bad_resp     = DATABASE_NOT_EXIST;
             len          = (ULong) strlen (bad_resp);
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
 
@@ -1949,6 +1961,178 @@ end:
     return rc;
 }
 
+eGoodBad TLocalDataBase::MysqlJoin (Word pArgc, WStrPtr* pArgv)
+{
+        AStrPtr    server                     = nullptr;
+        AStrPtr    username                   = nullptr;
+        AStrPtr    password                   = nullptr;
+        AStrPtr    databasename               = nullptr;
+        AStrPtr    join_type                  = nullptr;
+        AStrPtr    select_condition           = nullptr;
+        AStrPtr    set_or_from_condition      = nullptr;
+        AStrPtr    table_name                 = nullptr;
+        AStrPtr    on_condition               = nullptr;
+        AStrPtr    where_condition            = nullptr;
+        AStrPtr    enable_log_query           = nullptr;
+        AStrPtr *  table_names_array          = nullptr;
+        AStrPtr *  on_condition_array         = nullptr;
+        CAStrPtr   successful_message         = nullptr;
+        StrPtr     bad_response               = nullptr;
+        ULong      server_len;
+        ULong      username_len;
+        ULong      password_len;
+        ULong      databasename_len;
+        ULong      join_type_len;
+        ULong      select_condition_len;
+        ULong      set_or_from_condition_len;
+        ULong      table_name_len;
+        ULong      table_count;
+        ULong      table_names_data_count;
+        ULong      on_condition_len;
+        ULong      on_condition_count;
+        ULong      on_condition_data_count;
+        ULong      where_condition_len;
+        ULong      successful_message_len;
+        eGoodBad   rc                         = BAD;
+
+    if (pArgc != 10) {
+
+        SetResult (INSUFFICIENT_PARAMS_MYSQL_JOIN);
+        return rc;
+    }
+
+    server_len = (ULong) _tcslen (pArgv[0]);
+    server     = (AStrPtr) malloc ((server_len + 1) * sizeof (AChar));
+    UTF16ToAscii (server, pArgv[0], server_len);
+
+    username_len = (ULong) _tcslen (pArgv[1]);
+    username     = (AStrPtr) malloc ((username_len + 1) * sizeof (AChar));
+    UTF16ToAscii(username, pArgv[1], username_len);
+
+    password_len = (ULong) _tcslen (pArgv[2]);
+    password     = (AStrPtr) malloc ((password_len + 1) * sizeof (AChar));
+    UTF16ToAscii (password, pArgv[2], password_len);
+
+    databasename_len = (ULong) _tcslen (pArgv[3]);
+    databasename     = (AStrPtr) malloc ((databasename_len + 1) * sizeof (AChar));
+    UTF16ToAscii (databasename, pArgv[3], databasename_len);
+
+    join_type_len = (ULong) _tcslen (pArgv[4]);
+    join_type = (AStrPtr) malloc ((join_type_len + 1) * sizeof (AChar));
+    UTF16ToAscii (join_type, pArgv[4], join_type_len);
+
+    if (_stricmp (join_type, "Inner") == 0) {
+
+        vJoinType          = INNER_JOIN_TYPE;
+        successful_message = INNER_JOIN_EXECUTED;
+
+    } else if (_stricmp (join_type, "Left") == 0) {
+
+        vJoinType          = LEFT_JOIN_TYPE;
+        successful_message = LEFT_JOIN_EXECUTED;
+
+    } else if (_stricmp (join_type, "Right") == 0) {
+
+        vJoinType          = RIGHT_JOIN_TYPE;
+        successful_message = RIGHT_JOIN_EXECUTED;
+
+    } else if (_stricmp (join_type, "Cross") == 0) {
+
+        vJoinType          = CROSS_JOIN_TYPE;
+        successful_message = CROSS_JOIN_EXECUTED;
+
+    } else if (_stricmp (join_type, "Delete") == 0) {
+
+        vJoinType          = DELETE_JOIN_TYPE;
+        successful_message = DELETE_JOIN_EXECUTED;
+
+    } else if (_stricmp (join_type, "Equi") == 0) {
+
+        vJoinType          = EQUI_JOIN_TYPE;
+        successful_message = EQUI_JOIN_EXECUTED;
+
+    } else if (_stricmp (join_type, "Natural") == 0) {
+
+        vJoinType          = NATURAL_JOIN_TYPE;
+        successful_message = NATURAL_JOIN_EXECUTED;
+
+    } else if (_stricmp (join_type, "Update") == 0) {
+
+        vJoinType          = UPDATE_JOIN_TYPE;
+        successful_message = UPDATE_JOIN_EXECUTED;
+
+    } else {
+
+        SetResult (TDL_ERROR_INCORRECT_MYSQL_JOIN_TYPE);
+        goto end;
+    }
+
+    select_condition_len = (ULong) _tcslen (pArgv[5]);
+    select_condition     = (AStrPtr) malloc ((select_condition_len + 1) * sizeof (AChar));
+    UTF16ToAscii (select_condition, pArgv[5], select_condition_len);
+
+    set_or_from_condition_len = (ULong) _tcslen (pArgv[6]);
+    set_or_from_condition     = (AStrPtr) malloc ((set_or_from_condition_len + 1) * sizeof (AChar));
+    UTF16ToAscii (set_or_from_condition, pArgv[6], set_or_from_condition_len);
+
+    table_name_len = (ULong) _tcslen (pArgv[7]);
+    table_name     = (AStrPtr) malloc ((table_name_len + 1) * sizeof (AChar));
+    UTF16ToAscii (table_name, pArgv[7], table_name_len);
+
+    on_condition_len = (ULong) _tcslen (pArgv[8]);
+    on_condition     = (AStrPtr) malloc ((on_condition_len + 1) * sizeof (AChar));
+    UTF16ToAscii (on_condition, pArgv[8], on_condition_len);
+
+    where_condition_len = (ULong) _tcslen (pArgv[9]);
+    where_condition     = (AStrPtr) malloc ((where_condition_len + 1) * sizeof (AChar));
+    UTF16ToAscii (where_condition, pArgv[9], where_condition_len);
+
+    RemoveSpacesAroundComma (table_name);
+    RemoveSpacesAroundComma (on_condition);
+
+    table_count        = CountCommaOccurrence (table_name);
+    on_condition_count = CountCommaOccurrence (on_condition);
+
+    // here + 1 in table count because if user give one data then CountCommaOccurrence will give 0
+    table_names_array = (AStrPtr *) malloc ((table_count + 1) * sizeof(AStrPtr));
+    ExtractDetailsFromCSV (table_names_array, table_count + 1, table_name, &table_names_data_count);
+
+    // here + 1 in on condition count because if user give one data then CountCommaOccurrence will give 0
+    on_condition_array = (AStrPtr *) malloc ((on_condition_count + 1) * sizeof (AStrPtr));
+    ExtractDetailsFromCSV (on_condition_array, on_condition_count + 1, on_condition, &on_condition_data_count);
+
+    if (table_count + 1 == table_names_data_count && on_condition_count + 1 == on_condition_data_count) {
+
+        if (PerformMysqlJoin (server, username, password, databasename, vJoinType, select_condition, set_or_from_condition, table_names_array, table_count + 1, on_condition_array, on_condition_count + 1, where_condition, bad_response) == BAD) {
+
+            SetResult (bad_response);
+            goto end;
+        }
+    }
+
+
+    SetResult (successful_message);
+
+    rc = GOOD;
+
+end:
+    free (server);
+    free (username);
+    free (password);
+    free (databasename);
+    free (join_type);
+    free (select_condition);
+    free (set_or_from_condition);
+    free (table_name);
+    free (on_condition);
+    free (where_condition);
+    FreeArrayDataAndArray (table_names_array, table_names_data_count);
+    FreeArrayDataAndArray (on_condition_array, on_condition_data_count);
+    if (bad_response) free (bad_response);
+
+    return rc;
+}
+
 eGoodBad TLocalDataBase::InsertDataIntoTable (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr * pTableNameArray, AStrPtr * pColumnNamesArray, AStrPtr * pValuesArray, ULong ArraySize, StrPtr& pBadResponse)
 {
         Driver *              driver      = nullptr;
@@ -1996,7 +2180,7 @@ eGoodBad TLocalDataBase::InsertDataIntoTable (AStrPtr pServer, AStrPtr pUserName
         if (!res->next ()) {
 
             // Database does not exist
-            bad_resp     = "Database does not exist";
+            bad_resp     = DATABASE_NOT_EXIST;
             len          = (ULong) strlen (bad_resp);
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
 
@@ -2114,7 +2298,7 @@ eGoodBad TLocalDataBase::DeleteDataFromTable (Word pArgc, AStrPtr pServer, AStrP
 
         if (!res->next ()) {
 
-            bad_resp     = "Database does not exist";
+            bad_resp     = DATABASE_NOT_EXIST;
             len          = (ULong) strlen (bad_resp);
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
 
@@ -2235,7 +2419,7 @@ eGoodBad TLocalDataBase::ShowTableColumnData (Word pArgc, AStrPtr pServer, AStrP
 
             if (!res->next ()) {
 
-                bad_resp     = "Database does not exist";
+                bad_resp     = DATABASE_NOT_EXIST;
                 len          = (ULong) strlen (bad_resp);
                 pBadResponse = (StrPtr) malloc ((len + 1) * sizeof(Char));
                 UTF8ToUTF16 (pBadResponse, bad_resp, len);
@@ -2354,6 +2538,9 @@ eGoodBad TLocalDataBase::ShowTableColumnData (Word pArgc, AStrPtr pServer, AStrP
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
             UTF8ToUTF16 (pBadResponse, bad_resp, len);
 
+            delete stmt;
+            delete con;
+            delete res;
             return BAD;
         }
 
@@ -2413,7 +2600,7 @@ eGoodBad TLocalDataBase::UpdateColumnData (AStrPtr pServer, AStrPtr pUserName, A
 
         if (!res->next ()) {
 
-            bad_resp     = "Database does not exist";
+            bad_resp     = DATABASE_NOT_EXIST;
             len          = (ULong) strlen (bad_resp);
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
 
@@ -2515,7 +2702,7 @@ eGoodBad TLocalDataBase::AddForeignKey (AStrPtr pServer, AStrPtr pUserName, AStr
 
         if (!res->next ()) {
 
-            bad_resp     = "Database does not exist";
+            bad_resp     = DATABASE_NOT_EXIST;
             len          = (ULong) strlen (bad_resp);
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
             UTF8ToUTF16 (pBadResponse, bad_resp, len);
@@ -2630,7 +2817,7 @@ eGoodBad TLocalDataBase::DropForeignKey (AStrPtr pServer, AStrPtr pUserName, ASt
 
         if (!res->next ()) {
 
-            bad_resp     = "Database does not exist";
+            bad_resp     = DATABASE_NOT_EXIST;
             len          = (ULong) strlen (bad_resp);
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
             UTF8ToUTF16 (pBadResponse, bad_resp, len);
@@ -2737,7 +2924,7 @@ eGoodBad TLocalDataBase::ShowForeignKeyData (Word pArgc, AStrPtr pServer, AStrPt
 
         if (!res->next ()) {
 
-            bad_resp     = "Database does not exist";
+            bad_resp     = DATABASE_NOT_EXIST;
             len          = (ULong) strlen (bad_resp);
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
             UTF8ToUTF16 (pBadResponse, bad_resp, len);
@@ -2832,6 +3019,9 @@ eGoodBad TLocalDataBase::ShowForeignKeyData (Word pArgc, AStrPtr pServer, AStrPt
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
             UTF8ToUTF16 (pBadResponse, bad_resp, len);
 
+            delete stmt;
+            delete con;
+            delete res;
             return BAD;
         }
 
@@ -2872,22 +3062,14 @@ eGoodBad TLocalDataBase::CreateTrigger (Word pArgc, AStrPtr pServer, AStrPtr pUs
         driver = get_driver_instance ();
         con    = driver->connect (pServer, pUserName, pPassword);
 
-        // Check if connection succeeded
-        if (!con) {
-
-            bad_resp     = "Failed to connect to database";
-            len          = (ULong) strlen (bad_resp);
-            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-            UTF8ToUTF16 (pBadResponse, bad_resp, len);
-            return BAD;
-        }
-
     } catch (SQLException& e) {
 
         bad_resp     = e.what ();
         len          = (ULong) strlen (bad_resp);
         pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
         UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
         return BAD;
     }
 
@@ -2899,7 +3081,7 @@ eGoodBad TLocalDataBase::CreateTrigger (Word pArgc, AStrPtr pServer, AStrPtr pUs
 
         if (!res->next()) {
 
-            bad_resp     = "Database does not exist";
+            bad_resp     = DATABASE_NOT_EXIST;
             len          = (ULong) strlen (bad_resp);
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
             UTF8ToUTF16 (pBadResponse, bad_resp, len);
@@ -3007,7 +3189,7 @@ eGoodBad TLocalDataBase::DropTrigger (AStrPtr pServer, AStrPtr pUserName, AStrPt
 
         if (!res->next ()) {
 
-            bad_resp     = "Database does not exist";
+            bad_resp     = DATABASE_NOT_EXIST;
             len          = (ULong) strlen (bad_resp);
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
             UTF8ToUTF16 (pBadResponse, bad_resp, len);
@@ -3104,7 +3286,7 @@ eGoodBad TLocalDataBase::SetGeneralLog (AStrPtr pServer, AStrPtr pUserName, AStr
 
         if (!res->next ()) {
 
-            bad_resp     = "Database does not exist";
+            bad_resp     = DATABASE_NOT_EXIST;
             len          = (ULong) strlen (bad_resp);
             pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
             UTF8ToUTF16 (pBadResponse, bad_resp, len);
@@ -3159,6 +3341,223 @@ eGoodBad TLocalDataBase::SetGeneralLog (AStrPtr pServer, AStrPtr pUserName, AStr
         return GOOD;
 
     } catch (SQLException& e) {
+
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+        delete stmt;
+        delete con;
+        return BAD;
+    }
+}
+
+eGoodBad TLocalDataBase::PerformMysqlJoin (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, eJoinType pJoinType, AStrPtr pSelectCondition, AStrPtr pSetOrFromCondtion, AStrPtr * pTableNameArray, 
+                                           ULong pTableNameArraySize, AStrPtr * pOnConditionArray, ULong pOnConditionArraySize, AStrPtr pWhereCondition, StrPtr& pBadResponse)
+{
+        Driver *               driver             = nullptr;
+        Connection *           con                = nullptr;
+        Statement *            stmt               = nullptr;
+        PreparedStatement *    pstmt              = nullptr;
+        ResultSet *            res                = nullptr;
+        ResultSetMetaData *    meta_data          = nullptr;
+        AStrPtr                result_string;
+        string                 query;
+        CAStrPtr               bad_resp           = nullptr;
+        ULong                  len;
+        bool                   is_select_query    = false;
+        int                    column_count;
+
+    try {
+
+        driver = get_driver_instance ();
+        con    = driver->connect (pServer, pUserName, pPassword);
+
+    } catch (SQLException& e) {
+
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+        return BAD;
+    }
+
+    try {
+
+        pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
+        pstmt->setString (1, pDataBaseName);
+        res   = pstmt->executeQuery ();
+
+        if (!res->next()) {
+
+            bad_resp     = DATABASE_NOT_EXIST;
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            delete res;
+            delete pstmt;
+            delete con;
+            return BAD;
+        }
+
+        delete res;
+        delete pstmt;
+        pstmt = nullptr;
+
+        // Set the schema
+        con->setSchema (pDataBaseName);
+
+        stmt = con->createStatement ();
+
+        switch (pJoinType) {
+
+            case INNER_JOIN_TYPE:
+            case LEFT_JOIN_TYPE:
+            case RIGHT_JOIN_TYPE:
+            case CROSS_JOIN_TYPE:
+            case NATURAL_JOIN_TYPE:
+            case EQUI_JOIN_TYPE:
+                is_select_query = true;
+
+                query = "SELECT " + string (pSelectCondition) + " FROM " + string (pSetOrFromCondtion);
+                for (ULong i = 0; i < pTableNameArraySize; ++i) {
+
+                    switch (pJoinType) {
+
+                        case INNER_JOIN_TYPE:
+
+                            query += " INNER JOIN " + string(pTableNameArray[i]) + " ON " + string (pOnConditionArray[i]);
+                            break;
+
+                        case LEFT_JOIN_TYPE:
+
+                            query += " LEFT JOIN " + string (pTableNameArray[i]) + " ON " + string (pOnConditionArray[i]);
+                            break;
+
+                        case RIGHT_JOIN_TYPE:
+                        
+                            query += " RIGHT JOIN " + string (pTableNameArray[i]) + " ON " + string (pOnConditionArray[i]);
+                            break;
+
+                        case CROSS_JOIN_TYPE:
+                            
+                            query += " CROSS JOIN " + string (pTableNameArray[i]);
+                            break;
+
+                        case NATURAL_JOIN_TYPE:
+                             
+                            query += " NATURAL JOIN " + string (pTableNameArray[i]);
+                            break;
+
+                        default:
+                            break;
+                    }
+                }
+                break;
+
+            case DELETE_JOIN_TYPE:
+
+                query = "DELETE " + string (pSelectCondition) + " FROM " + string (pSetOrFromCondtion);
+
+                for (ULong i = 0; i < pTableNameArraySize; ++i) {
+
+                    query += " JOIN " + string (pTableNameArray[i]) + " ON " + string (pOnConditionArray[i]);
+                }
+                break;
+
+            case UPDATE_JOIN_TYPE:
+
+                query = "UPDATE " + string (pSelectCondition);
+
+                for (ULong i = 0; i < pTableNameArraySize; ++i) {
+
+                    query += " JOIN " + string (pTableNameArray[i]) + " ON " + string (pOnConditionArray[i]);
+                }
+                query += " SET " + string (pSetOrFromCondtion);
+                break;
+        
+            default:
+             
+                // Invalid Join type
+                bad_resp     = TDL_ERROR_INCORRECT_MYSQL_JOIN_TYPE;
+                len          = (ULong) strlen (bad_resp);
+                pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+                UTF8ToUTF16 (pBadResponse, bad_resp, len);
+                delete stmt;
+                delete con;
+                return BAD;
+        }
+
+        if (pWhereCondition && *pWhereCondition) {
+
+            query += " WHERE " + string (pWhereCondition);
+        }
+
+        query += ";";
+
+        if (is_select_query) {
+
+            res          = stmt->executeQuery (query);
+            meta_data    = res->getMetaData ();
+            column_count = meta_data->getColumnCount ();
+
+            rapidjson::Document json_document;
+            json_document.SetObject ();
+
+            rapidjson::Value data_array (rapidjson::kArrayType);
+
+            while (res->next ()) {
+
+                rapidjson::Value row_object (rapidjson::kObjectType);
+
+                for (int j = 1; j <= column_count; ++j) {
+
+                    rapidjson::Value column_name;
+                    rapidjson::Value column_value;
+
+                    column_name.SetString (meta_data->getColumnName (j).c_str (), json_document.GetAllocator ());
+                    column_value.SetString (res->getString (j).c_str (), json_document.GetAllocator ());
+                    row_object.AddMember (column_name, column_value, json_document.GetAllocator ());
+                }
+                data_array.PushBack (row_object, json_document.GetAllocator ());
+            }
+
+            json_document.AddMember ("Join Data", data_array, json_document.GetAllocator ());
+
+            // Convert JSON document to string
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer (buffer);
+            json_document.Accept (writer);
+
+            result_string = (AStrPtr) buffer.GetString ();
+
+            if (WriteResponeFile (result_string) == BAD) {
+
+                bad_resp     = "Failed to write data in file";
+                len          = (ULong) strlen (bad_resp);
+                pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+                UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+                delete res;
+                delete stmt;
+                delete con;
+                return BAD;
+            }
+            delete res;
+
+        } else {
+
+            stmt->executeUpdate (query);
+        }
+
+        delete stmt;
+        delete con;
+        return GOOD;
+
+    }
+    catch (SQLException& e) {
 
         bad_resp     = e.what ();
         len          = (ULong) strlen (bad_resp);
