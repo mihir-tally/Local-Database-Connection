@@ -1,6 +1,5 @@
 #ifndef LOCALDB_HPP
 #define LOCALDB_HPP
-#include "common.hpp"
 
 using namespace std;
 using namespace sql;
@@ -141,14 +140,11 @@ inline              ~TLocalDataBase            ();
         void       ExtractDetailsFromCSV       (AStrPtr* pArray, ULong pArraySize, AStrPtr pData, ULong* pDataCount);
         void       ExtractDataBetweenBraces    (AStrPtr* pArray, ULong pArraySize, AStrPtr pData, ULong* pDataCount);
         void       FreeArrayDataAndArray       (AStrPtr* pArray, ULong pArraySize);
+        eGoodBad   GetDllPath                  ();
+        eGoodBad   WriteResponeFile            (AStrPtr pResponseData, CStrPtr pFileName = nullptr);
 
-        void        SetResult                  (CWStrPtr pVal);
-        void        SetResult                  (CAStrPtr pVal);
-        eGoodBad    GetDllPath                 ();
-        eGoodBad    WriteResponeFile           (AStrPtr pResponseData, CStrPtr pFileName = nullptr);
-        void        UTF8ToUTF16                (WStrPtr pDestination, CAStrPtr pSource, UInt32 pLength);
-        void        UTF16ToAscii               (AStrPtr pDest, CWStrPtr pSrc, Long pSrcLen);
-        void        AsciiToUTF16               (WStrPtr pDestination, CAStrPtr pSource, UInt32 pLength);
+inline  void        SetResult                  (CWStrPtr pVal);
+inline  void        SetResult                  (CAStrPtr pVal);
 
         StrPtr *    vResult;
         Long *      vResultSize;
@@ -159,4 +155,7 @@ inline              ~TLocalDataBase            ();
         eActionType vActionType;
         eJoinType   vJoinType;
 };
+
+#include "LocalDB.hxx"
+
 #endif //LOCALDB_HPP
