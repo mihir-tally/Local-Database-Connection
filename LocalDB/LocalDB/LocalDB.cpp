@@ -168,76 +168,6 @@ HRESULT MysqlJoin (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSi
     return S_OK;
 }
 
-TLocalDataBase::TLocalDataBase (StrPtr* pResult, Long* pResultSize)
-{
-    vResult     = pResult;
-    vResultSize = pResultSize;
-    vDllPath    = nullptr;
-    vDllPathLen = 0;
-
-    GetDllPath ();
-}
-
-TLocalDataBase::~TLocalDataBase ()
-{
-    if (vDllPath) {
-
-        free (vDllPath);
-        vDllPath = nullptr;
-    }
-}
-
-void TLocalDataBase::UTF8ToUTF16 (WStrPtr pDestination, CAStrPtr pSource, UInt32 pLength)
-{
-    MultiByteToWideChar (CP_UTF8, 0, (LPCCH) pSource, pLength, pDestination, pLength * sizeof (Char));
-
-    pDestination[pLength] = (WChar)'\0';
-}
-
-void TLocalDataBase::UTF16ToAscii (AStrPtr pDest, CWStrPtr pSrc, Long pSrcLen)
-{
-    while (pSrcLen--)
-        if (*pSrc > MAX_ASCII_CHAR_LIMIT) {
-
-            *pDest++ = '?';
-            pSrc++;
-
-        }
-        else
-            *pDest++ = (AChar)*pSrc++;
-
-    *pDest = '\0';
-}
-
-void TLocalDataBase::AsciiToUTF16 (WStrPtr pDestination, CAStrPtr pSource, UInt32 pLength)
-{
-    while (pLength--) {
-
-        // copy to destination as UTF16
-        *(pDestination++) = *(pSource++);
-    }
-
-    *pDestination = (WChar)'\0';
-}
-
-void TLocalDataBase::SetResult (CWStrPtr pVal)
-{
-    *vResultSize = (Long) wcslen(pVal) + 1;
-
-    *vResult = static_cast<WStrPtr> (CoTaskMemAlloc (*vResultSize * sizeof (WChar)));
-
-    memcpy (*vResult, pVal, *vResultSize * sizeof(WChar));
-}
-
-void TLocalDataBase::SetResult (CAStrPtr pVal)
-{
-    *vResultSize = (Long) strlen (pVal) + 1;
-
-    *vResult = static_cast<WStrPtr> (CoTaskMemAlloc (*vResultSize * sizeof (WChar)));
-
-    AsciiToUTF16 (*vResult, pVal, *vResultSize);
-}
-
 void TLocalDataBase::RemoveSpacesAroundComma (AStrPtr pStr)
 {
         Long  i;
@@ -364,10 +294,10 @@ Long TLocalDataBase::CountCommaBetweenBraces (AStrPtr pStr)
     return comma_operator_count;
 }
 
-void TLocalDataBase::ExtractDetailsFromCSV(AStrPtr * pArray, ULong pArraySize, AStrPtr pData, ULong* pDataCount)
+void TLocalDataBase::ExtractDetailsFromCSV (AStrPtr * pArray, ULong pArraySize, AStrPtr pData, ULong* pDataCount)
 {
         AStrPtr    str            = nullptr;
-        AStrPtr    context        = nullptr; // for strtok_s
+        AStrPtr    context        = nullptr;
         ULong      num_of_data;
 
     *pDataCount = 0;
@@ -377,12 +307,12 @@ void TLocalDataBase::ExtractDetailsFromCSV(AStrPtr * pArray, ULong pArraySize, A
         return;
     }
 
-    str         = strtok_s( pData, ",", &context); // Using strtok_s instead of strtok
+    str         = strtok_s( pData, ",", &context);
     num_of_data = 0;
 
     while (str != nullptr && num_of_data < pArraySize) {
 
-        pArray[num_of_data] = (AStrPtr) malloc (strlen(str) + 1); // Allocate memory for each string
+        pArray[num_of_data] = (AStrPtr) malloc (strlen(str) + 1);
 
         if (pArray[num_of_data] != nullptr) {
 
@@ -391,10 +321,10 @@ void TLocalDataBase::ExtractDetailsFromCSV(AStrPtr * pArray, ULong pArraySize, A
             (*pDataCount)++;
         }
         else {
-            // Handle allocation failure
+            
             break;
         }
-        str = strtok_s (nullptr, ",", &context); // Using strtok_s instead of strtok
+        str = strtok_s (nullptr, ",", &context);
     }
 }
 
@@ -585,111 +515,6 @@ end:
     return rc;
 }
 
-eGoodBad TLocalDataBase::DataBase (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, 
-                                   eBool pCreateDb, StrPtr & pBadResponse)
-{
-        Driver *              driver;
-        Connection *          con         = nullptr;
-        Statement *           stmt        = nullptr;
-        PreparedStatement *   pstmt       = nullptr;
-        ResultSet *           res         = nullptr;
-        CAStrPtr              bad_resp    = nullptr;
-        ULong                 len;
-
-    try {
-
-        driver = get_driver_instance ();
-        con    = driver->connect (pServer, pUserName, pPassword);
-
-    } catch (SQLException &e) {
-
-        bad_resp     = e.what ();
-        len          = (ULong) strlen (bad_resp);
-        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-
-        UTF8ToUTF16 (pBadResponse, bad_resp, len);
-        return BAD;
-    }
-
-    try {
-
-        stmt  = con->createStatement ();
-
-        pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
-        pstmt->setString (1, pDataBaseName);
-        res   = pstmt->executeQuery ();
-
-        bool db_exists = res->next ();
-
-        if (pCreateDb) {
-
-            if (db_exists) {
-
-                bad_resp     = "Database already exists";
-                len          = (ULong) strlen (bad_resp);
-                pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-
-                UTF8ToUTF16 (pBadResponse, bad_resp, len);
-
-                delete res;
-                delete pstmt;
-                delete stmt;
-                delete con;
-                return BAD;
-
-            } else {
-                
-                stmt->execute ("CREATE DATABASE " + string (pDataBaseName));
-                con->setSchema (pDataBaseName);
-            }
-        } else {
-
-            if (!db_exists) {
-
-                bad_resp     = DATABASE_NOT_EXIST;
-                len          = (ULong) strlen (bad_resp);
-                pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-
-                UTF8ToUTF16 (pBadResponse, bad_resp, len);
-
-                delete res;
-                delete pstmt;
-                delete stmt;
-                delete con;
-                return BAD;
-
-            } else {
-
-                stmt->execute ("DROP DATABASE " + string (pDataBaseName));
-            }
-        }
-
-        delete res;
-        delete pstmt;
-        delete stmt;
-        delete con;
-
-        return GOOD;
-
-    } catch (SQLException& e) {
-        
-        bad_resp     = e.what ();
-        len          = (ULong) strlen (bad_resp);
-        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof(Char));
-
-        UTF8ToUTF16 (pBadResponse, bad_resp, len);
-
-        delete res;
-        delete pstmt;
-        delete stmt;
-        delete con;
-
-        return BAD;
-    }
-
-    return GOOD;
-}
-
 eGoodBad TLocalDataBase::CreateTable (Word pArgc, WStrPtr* pArgv)
 {
         AStrPtr    server               = nullptr;
@@ -736,12 +561,12 @@ eGoodBad TLocalDataBase::CreateTable (Word pArgc, WStrPtr* pArgv)
     UTF16ToAscii (table_name, pArgv[4], table_name_len);
 
     column_name_len = (ULong) _tcslen (pArgv[5]);
-    column_name    = (AStrPtr) malloc ((column_name_len + 1) * sizeof (AChar));
-    UTF16ToAscii(column_name, pArgv[5], column_name_len);
+    column_name     = (AStrPtr) malloc ((column_name_len + 1) * sizeof (AChar));
+    UTF16ToAscii (column_name, pArgv[5], column_name_len);
 
     column_datatype_len = (ULong) _tcslen (pArgv[6]);
     column_datatype     = (AStrPtr) malloc ((column_datatype_len + 1) * sizeof (AChar));
-    UTF16ToAscii(column_datatype, pArgv[6], column_datatype_len);
+    UTF16ToAscii (column_datatype, pArgv[6], column_datatype_len);
 
     if (CreateLocalTable (server, username, password, databasename, table_name, column_name, column_datatype, bad_response) == BAD) {
 
@@ -898,360 +723,6 @@ end:
     if (bad_response) free (bad_response);
 
     return rc;
-}
-
-eGoodBad TLocalDataBase::CreateLocalTable (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, AStrPtr pColumnName, AStrPtr pColumnDataType, StrPtr& pBadResponse)
-{
-        Driver *               driver;
-        Connection *           con         = nullptr;
-        Statement *            stmt        = nullptr;
-        PreparedStatement *    pstmt       = nullptr;
-        ResultSet *            res         = nullptr;
-        CAStrPtr               bad_resp    = nullptr;
-        ULong                  len;
-
-    try {
-
-        driver = get_driver_instance ();
-        con    = driver->connect (pServer, pUserName, pPassword);
-
-    } catch (SQLException& e) {
-
-        bad_resp     = e.what ();
-        len          = (ULong) strlen (bad_resp);
-        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-
-        UTF8ToUTF16 (pBadResponse, bad_resp, len);
-
-        return BAD;
-    }
-
-    try {
-
-        stmt  = con->createStatement ();
-
-        pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
-        pstmt->setString (1, pDataBaseName);
-        res   = pstmt->executeQuery ();
-
-        if (!res->next ()) {
-
-            bad_resp     = DATABASE_NOT_EXIST;
-            len          = (ULong) strlen (bad_resp);
-            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof(Char));
-
-            UTF8ToUTF16 (pBadResponse, bad_resp, len);
-
-            delete res;
-            delete pstmt;
-            delete stmt;
-            delete con;
-            return BAD;
-        }
-
-        con->setSchema (pDataBaseName);
-
-        delete res;
-        delete pstmt;
-        delete stmt;
-
-        // Now proceed to create the table
-        stmt = con->createStatement ();
-
-        // Check if the table already exists
-        pstmt = con->prepareStatement ("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?");
-        pstmt->setString (1, pDataBaseName);
-        pstmt->setString (2, pTableName);
-        res = pstmt->executeQuery ();
-
-        if (res->next ()) {
-
-            // Table already exists
-            bad_resp     = "Table already exists";
-            len          = (ULong) strlen (bad_resp);
-            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-
-            UTF8ToUTF16 (pBadResponse, bad_resp, len);
-
-            delete res;
-            delete pstmt;
-            delete stmt;
-            delete con;
-            return BAD;
-        }
-
-         stmt->execute ("CREATE TABLE " + string(pTableName) + " (" + string(pColumnName) + " " + string (pColumnDataType) + ");");
-
-        delete res;
-        delete pstmt;
-        delete stmt;
-        delete con;
-
-        return GOOD;
-
-    } catch (SQLException& e) {
-
-        bad_resp     = e.what ();
-        len          = (ULong) strlen (bad_resp);
-        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-
-        UTF8ToUTF16 (pBadResponse, bad_resp, len);
-
-        delete res;
-        delete pstmt;
-        delete stmt;
-        delete con;
-        return BAD;
-    }
-}
-
-eGoodBad TLocalDataBase::DeleteLocalTable (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, StrPtr& pBadResponse)
-{
-        Driver *               driver;
-        Connection *           con         = nullptr;
-        Statement *            stmt        = nullptr;
-        PreparedStatement *    pstmt       = nullptr;
-        ResultSet *            res         = nullptr;
-        CAStrPtr               bad_resp    = nullptr;
-        ULong                  len;
-
-    try {
-
-        driver = get_driver_instance ();
-        con    = driver->connect (pServer, pUserName, pPassword);
-
-    } catch (SQLException& e) {
-
-        bad_resp     = e.what ();
-        len          = (ULong) strlen (bad_resp);
-        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-
-        UTF8ToUTF16 (pBadResponse, bad_resp, len);
-
-        return BAD;
-    }
-
-    try {
-
-        stmt  = con->createStatement ();
-
-        pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
-        pstmt->setString (1, pDataBaseName);
-        res   = pstmt->executeQuery ();
-
-        if (!res->next ()) {
-
-            bad_resp     = DATABASE_NOT_EXIST;
-            len          = (ULong) strlen (bad_resp);
-            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-
-            UTF8ToUTF16 (pBadResponse, bad_resp, len);
-
-            delete res;
-            delete pstmt;
-            delete stmt;
-            delete con;
-            return BAD;
-        }
-
-        con->setSchema (pDataBaseName);
-
-        delete res;
-        delete pstmt;
-        delete stmt;
-
-        stmt  = con->createStatement ();
-
-        pstmt = con->prepareStatement ("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?");
-        
-        pstmt->setString (1, pDataBaseName);
-        pstmt->setString (2, pTableName);
-        
-        res   = pstmt->executeQuery ();
-
-        if (res->next ()) {
-
-            stmt->execute ("DROP TABLE " + string (pTableName));
-
-        } else {
-
-            bad_resp     = "Table does not exist";
-            len          = (ULong) strlen (bad_resp);
-            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-
-            UTF8ToUTF16 (pBadResponse, bad_resp, len);
-
-            delete res;
-            delete pstmt;
-            delete stmt;
-            delete con;
-            return BAD;
-        }
-
-        delete res;
-        delete pstmt;
-        delete stmt;
-        delete con;
-
-        return GOOD;
-
-    } catch (SQLException& e) {
-
-        bad_resp     = e.what ();
-        len          = (ULong) strlen (bad_resp);
-        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-
-        UTF8ToUTF16 (pBadResponse, bad_resp, len);
-
-        delete res;
-        delete pstmt;
-        delete stmt;
-        delete con;
-        return BAD;
-    }
-}
-
-eGoodBad TLocalDataBase::AlterLocalTable (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, 
-                                          AStrPtr pColumnName, AStrPtr pColumnDataType, StrPtr& pBadResponse)
-{
-        Driver *               driver;
-        Connection *           con         = nullptr;
-        Statement *            stmt        = nullptr;
-        PreparedStatement *    pstmt       = nullptr;
-        ResultSet *            res         = nullptr;
-        CAStrPtr               bad_resp    = nullptr;
-        ULong                  len;
-
-    try {
-
-        driver = get_driver_instance ();
-        con    = driver->connect (pServer, pUserName, pPassword);
-
-    } catch (SQLException& e) {
-
-        bad_resp     = e.what ();
-        len          = (ULong) strlen (bad_resp);
-        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-
-        UTF8ToUTF16 (pBadResponse, bad_resp, len);
-        return BAD;
-    }
-
-    try {
-
-        stmt  = con->createStatement ();
-
-        // Check if the database exists
-        pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
-        pstmt->setString (1, pDataBaseName);
-        res   = pstmt->executeQuery ();
-
-        if (!res->next ()) {
-
-            bad_resp     = DATABASE_NOT_EXIST;
-            len          = (ULong) strlen (bad_resp);
-            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-
-            UTF8ToUTF16 (pBadResponse, bad_resp, len);
-
-            delete res;
-            delete pstmt;
-            delete stmt;
-            delete con;
-            return BAD;
-        }
-
-        con->setSchema (pDataBaseName);
-
-        delete res;
-        res = nullptr;
-
-        delete pstmt;
-        pstmt = nullptr;
-
-        delete stmt;
-        stmt = nullptr;
-
-        stmt  = con->createStatement ();
-
-        // Check if the table exists
-        pstmt = con->prepareStatement ("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?");
-        pstmt->setString (1, pDataBaseName);
-        pstmt->setString (2, pTableName);
-        res   = pstmt->executeQuery ();
-
-        if (!res->next ()) {
-
-            bad_resp     = "Table does not exist";
-            len          = (ULong) strlen (bad_resp);
-            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-
-            UTF8ToUTF16 (pBadResponse, bad_resp, len);
-
-            delete res;
-            delete pstmt;
-            delete stmt;
-            delete con;
-            return BAD;
-        }
-
-        delete res;
-        res = nullptr;
-
-        delete pstmt;
-        pstmt = nullptr;
-
-        // Check if the column exists
-        pstmt = con->prepareStatement ("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?");
-        pstmt->setString (1, pDataBaseName);
-        pstmt->setString (2, pTableName);
-        pstmt->setString (3, pColumnName);
-        res   = pstmt->executeQuery ();
-
-        if (res->next ()) {
-
-            bad_resp     = "Column already exists";
-            len          = (ULong) strlen (bad_resp);
-            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-
-            UTF8ToUTF16 (pBadResponse, bad_resp, len);
-
-            delete res;
-            delete pstmt;
-            delete stmt;
-            delete con;
-            return BAD;
-        }
-
-        delete res;
-        res = nullptr;
-
-        delete pstmt;
-        pstmt = nullptr;
-
-        stmt = con->createStatement ();
-
-        stmt->execute ("ALTER TABLE " + string(pTableName) + " ADD COLUMN " + string(pColumnName) + " " + string(pColumnDataType) + ";");
-
-        delete stmt;
-        delete con;
-
-        return GOOD;
-
-    } catch (SQLException& e) {
-
-        bad_resp     = e.what ();
-        len          = (ULong) strlen (bad_resp);
-        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-
-        UTF8ToUTF16 (pBadResponse, bad_resp, len);
-
-        delete res;
-        delete pstmt;
-        delete stmt;
-        delete con;
-        return BAD;
-    }
 }
 
 eGoodBad TLocalDataBase::InsertData (Word pArgc, WStrPtr* pArgv)
@@ -2133,6 +1604,470 @@ end:
     return rc;
 }
 
+eGoodBad TLocalDataBase::DataBase (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName,
+                                   eBool pCreateDb, StrPtr& pBadResponse)
+{
+        Driver *              driver;
+        Connection *          con         = nullptr;
+        Statement *           stmt        = nullptr;
+        PreparedStatement *   pstmt       = nullptr;
+        ResultSet *           res         = nullptr;
+        CAStrPtr              bad_resp    = nullptr;
+        ULong                 len;
+
+    try {
+
+        driver = get_driver_instance ();
+        con    = driver->connect (pServer, pUserName, pPassword);
+
+    } catch (SQLException& e) {
+
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+        return BAD;
+    }
+
+    try {
+
+        stmt = con->createStatement ();
+
+        pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
+        pstmt->setString (1, pDataBaseName);
+        res   = pstmt->executeQuery ();
+
+        bool db_exists = res->next ();
+
+        if (pCreateDb) {
+
+            if (db_exists) {
+
+                bad_resp     = "Database already exists";
+                len          = (ULong) strlen (bad_resp);
+                pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+                UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+                delete res;
+                delete pstmt;
+                delete stmt;
+                delete con;
+                return BAD;
+
+            } else {
+
+                stmt->execute ("CREATE DATABASE " + string(pDataBaseName));
+                con->setSchema (pDataBaseName);
+            }
+        } else {
+            
+            if (!db_exists) {
+
+                bad_resp     = DATABASE_NOT_EXIST;
+                len          = (ULong) strlen (bad_resp);
+                pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+                UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+                delete res;
+                delete pstmt;
+                delete stmt;
+                delete con;
+                return BAD;
+
+            } else {
+
+                stmt->execute ("DROP DATABASE " + string (pDataBaseName));
+            }
+        }
+
+        delete res;
+        delete pstmt;
+        delete stmt;
+        delete con;
+
+        return GOOD;
+
+    } catch (SQLException& e) {
+
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+        delete res;
+        delete pstmt;
+        delete stmt;
+        delete con;
+
+        return BAD;
+    }
+
+    return GOOD;
+}
+
+eGoodBad TLocalDataBase::CreateLocalTable (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, 
+                                           AStrPtr pColumnName, AStrPtr pColumnDataType, StrPtr& pBadResponse)
+{
+        Driver *              driver;
+        Connection *          con         = nullptr;
+        Statement *           stmt        = nullptr;
+        PreparedStatement *   pstmt       = nullptr;
+        ResultSet *           res         = nullptr;
+        CAStrPtr              bad_resp    = nullptr;
+        ULong                 len;
+
+    try {
+
+        driver = get_driver_instance ();
+        con    = driver->connect (pServer, pUserName, pPassword);
+
+    } catch (SQLException& e) {
+
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+        return BAD;
+    }
+
+    try {
+
+        stmt  = con->createStatement ();
+
+        pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
+        pstmt->setString (1, pDataBaseName);
+        res   = pstmt->executeQuery ();
+
+        if (!res->next ()) {
+
+            bad_resp     = DATABASE_NOT_EXIST;
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            delete res;
+            delete pstmt;
+            delete stmt;
+            delete con;
+            return BAD;
+        }
+
+        con->setSchema (pDataBaseName);
+
+        delete res;
+        delete pstmt;
+        delete stmt;
+
+        // Now proceed to create the table
+        stmt = con->createStatement ();
+
+        // Check if the table already exists
+        pstmt = con->prepareStatement ("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?");
+        pstmt->setString (1, pDataBaseName);
+        pstmt->setString (2, pTableName);
+        res = pstmt->executeQuery ();
+
+        if (res->next()) {
+
+            // Table already exists
+            bad_resp     = "Table already exists";
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            delete res;
+            delete pstmt;
+            delete stmt;
+            delete con;
+            return BAD;
+        }
+
+        stmt->execute ("CREATE TABLE " + string (pTableName) + " (" + string (pColumnName) + " " + string (pColumnDataType) + ");");
+
+        delete res;
+        delete pstmt;
+        delete stmt;
+        delete con;
+
+        return GOOD;
+
+    } catch (SQLException& e) {
+
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+        delete res;
+        delete pstmt;
+        delete stmt;
+        delete con;
+        return BAD;
+    }
+}
+
+eGoodBad TLocalDataBase::DeleteLocalTable (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName, StrPtr& pBadResponse)
+{
+        Driver *              driver;
+        Connection *          con         = nullptr;
+        Statement *           stmt        = nullptr;
+        PreparedStatement *   pstmt       = nullptr;
+        ResultSet *           res         = nullptr;
+        CAStrPtr              bad_resp    = nullptr;
+        ULong                 len;
+
+    try {
+
+        driver = get_driver_instance ();
+        con    = driver->connect (pServer, pUserName, pPassword);
+
+    } catch (SQLException& e) {
+
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+        return BAD;
+    }
+
+    try {
+
+        stmt  = con->createStatement ();
+
+        pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
+        pstmt->setString (1, pDataBaseName);
+        res   = pstmt->executeQuery ();
+
+        if (!res->next ()) {
+
+            bad_resp     = DATABASE_NOT_EXIST;
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            delete res;
+            delete pstmt;
+            delete stmt;
+            delete con;
+            return BAD;
+        }
+
+        con->setSchema (pDataBaseName);
+
+        delete res;
+        delete pstmt;
+        delete stmt;
+
+        res   = nullptr;
+        pstmt = nullptr;
+        stmt  = nullptr;
+
+        stmt  = con->createStatement ();
+
+        pstmt = con->prepareStatement ("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?");
+
+        pstmt->setString (1, pDataBaseName);
+        pstmt->setString (2, pTableName);
+
+        res = pstmt->executeQuery ();
+
+        if (res->next ()) {
+
+            stmt->execute ("DROP TABLE " + string(pTableName));
+
+        }
+        else {
+
+            bad_resp     = "Table does not exist";
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            delete res;
+            delete pstmt;
+            delete stmt;
+            delete con;
+            return BAD;
+        }
+
+        delete res;
+        delete pstmt;
+        delete stmt;
+        delete con;
+
+        return GOOD;
+
+    } catch (SQLException& e) {
+
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+        delete res;
+        delete pstmt;
+        delete stmt;
+        delete con;
+        return BAD;
+    }
+}
+
+eGoodBad TLocalDataBase::AlterLocalTable (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTableName,
+                                          AStrPtr pColumnName, AStrPtr pColumnDataType, StrPtr& pBadResponse)
+{
+        Driver *              driver;
+        Connection *          con         = nullptr;
+        Statement *           stmt        = nullptr;
+        PreparedStatement *   pstmt       = nullptr;
+        ResultSet *           res         = nullptr;
+        CAStrPtr              bad_resp    = nullptr;
+        ULong                 len;
+
+    try {
+
+        driver = get_driver_instance ();
+        con    = driver->connect (pServer, pUserName, pPassword);
+
+    } catch (SQLException& e) {
+
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+        return BAD;
+    }
+
+    try {
+
+        stmt  = con->createStatement ();
+
+        // Check if the database exists
+        pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
+        pstmt->setString (1, pDataBaseName);
+        res   = pstmt->executeQuery ();
+
+        if (!res->next ()) {
+
+            bad_resp     = DATABASE_NOT_EXIST;
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            delete res;
+            delete pstmt;
+            delete stmt;
+            delete con;
+            return BAD;
+        }
+
+        con->setSchema (pDataBaseName);
+
+        delete res;
+        delete pstmt;
+        delete stmt;
+
+        res   = nullptr;
+        pstmt = nullptr;
+        stmt  = nullptr;
+
+        stmt = con->createStatement ();
+
+        // Check if the table exists
+        pstmt = con->prepareStatement ("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?");
+        pstmt->setString (1, pDataBaseName);
+        pstmt->setString (2, pTableName);
+        res = pstmt->executeQuery ();
+
+        if (!res->next ()) {
+
+            bad_resp     = "Table does not exist";
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            delete res;
+            delete pstmt;
+            delete stmt;
+            delete con;
+            return BAD;
+        }
+
+        delete res;
+        delete pstmt;
+
+        res   = nullptr;
+        pstmt = nullptr;
+
+        // Check if the column exists
+        pstmt = con->prepareStatement ("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?");
+        pstmt->setString (1, pDataBaseName);
+        pstmt->setString (2, pTableName);
+        pstmt->setString (3, pColumnName);
+        res = pstmt->executeQuery ();
+
+        if (res->next ()) {
+
+            bad_resp     = "Column already exists";
+            len          = (ULong) strlen (bad_resp);
+            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+            UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+            delete res;
+            delete pstmt;
+            delete stmt;
+            delete con;
+            return BAD;
+        }
+
+        delete res;
+        delete pstmt;
+
+        res   = nullptr;
+        pstmt = nullptr;
+
+        stmt = con->createStatement ();
+
+        stmt->execute ("ALTER TABLE " + string (pTableName) + " ADD COLUMN " + string (pColumnName) + " " + string (pColumnDataType) + ";");
+
+        delete stmt;
+        delete con;
+
+        return GOOD;
+
+    } catch (SQLException& e) {
+
+        bad_resp     = e.what();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+        delete res;
+        delete pstmt;
+        delete stmt;
+        delete con;
+        return BAD;
+    }
+}
+
 eGoodBad TLocalDataBase::InsertDataIntoTable (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr * pTableNameArray, AStrPtr * pColumnNamesArray, AStrPtr * pValuesArray, ULong ArraySize, StrPtr& pBadResponse)
 {
         Driver *              driver      = nullptr;
@@ -2228,6 +2163,9 @@ eGoodBad TLocalDataBase::InsertDataIntoTable (AStrPtr pServer, AStrPtr pUserName
             delete res;
             delete pstmt;
 
+            res   = nullptr;
+            pstmt = nullptr;
+
             stmt = con->createStatement ();
 
             // Construct the SQL query to insert data into the table
@@ -2312,6 +2250,8 @@ eGoodBad TLocalDataBase::DeleteDataFromTable (Word pArgc, AStrPtr pServer, AStrP
 
         delete res;
         delete pstmt;
+
+        res   = nullptr;
         pstmt = nullptr;
 
         // Check if the table exists
@@ -2338,6 +2278,9 @@ eGoodBad TLocalDataBase::DeleteDataFromTable (Word pArgc, AStrPtr pServer, AStrP
 
         delete res;
         delete pstmt;
+        
+        res   = nullptr;
+        pstmt = nullptr;
 
         // Delete all data from the table
         stmt = con->createStatement ();
@@ -2432,6 +2375,8 @@ eGoodBad TLocalDataBase::ShowTableColumnData (Word pArgc, AStrPtr pServer, AStrP
 
             delete res;
             delete pstmt;
+
+            res   = nullptr;
             pstmt = nullptr;
 
             con->setSchema (pDataBaseName);
@@ -2455,6 +2400,8 @@ eGoodBad TLocalDataBase::ShowTableColumnData (Word pArgc, AStrPtr pServer, AStrP
 
             delete res;
             delete pstmt;
+
+            res   = nullptr;
             pstmt = nullptr;
         }
 
@@ -2641,6 +2588,9 @@ eGoodBad TLocalDataBase::UpdateColumnData (AStrPtr pServer, AStrPtr pUserName, A
         delete res;
         delete pstmt;
 
+        res   = nullptr;
+        pstmt = nullptr;
+
         // Delete all data from the table
         stmt  = con->createStatement ();
         query = "UPDATE " + string (pTableName) + " SET " + string (pColumnDataValue) + " WHERE " + string (pConditionData) + ";";
@@ -2680,21 +2630,22 @@ eGoodBad TLocalDataBase::AddForeignKey (AStrPtr pServer, AStrPtr pUserName, AStr
         ULong                  len;
 
     try {
+
         driver = get_driver_instance ();
-        con    = driver->connect (pServer, pUserName, pPassword);
+        con = driver->connect (pServer, pUserName, pPassword);
 
-        // Check connection
-        if (!con) {
-           
-            bad_resp     = "Connection error";
-            len          = (ULong) strlen (bad_resp);
-            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-            UTF8ToUTF16 (pBadResponse, bad_resp, len);
-            return BAD;
-        }
+    } catch (SQLException& e) {
 
-        con->setSchema (pDataBaseName);
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
 
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+
+        return BAD;
+    }
+
+    try {
         // Check if the database exists
         pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
         pstmt->setString (1, pDataBaseName);
@@ -2716,7 +2667,11 @@ eGoodBad TLocalDataBase::AddForeignKey (AStrPtr pServer, AStrPtr pUserName, AStr
         delete res;
         delete pstmt;
 
+        res   = nullptr;
+        pstmt = nullptr;
+
         // Check if the main table exists
+        con->setSchema (pDataBaseName);
         pstmt = con->prepareStatement ("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?");
         pstmt->setString (1, pDataBaseName);
         pstmt->setString (2, pTableName);
@@ -2738,6 +2693,10 @@ eGoodBad TLocalDataBase::AddForeignKey (AStrPtr pServer, AStrPtr pUserName, AStr
         delete res;
         delete pstmt;
 
+        res   = nullptr;
+        pstmt = nullptr;
+
+
         // Check if the reference table exists
         pstmt = con->prepareStatement ("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?");
         pstmt->setString (1, pDataBaseName);
@@ -2758,6 +2717,9 @@ eGoodBad TLocalDataBase::AddForeignKey (AStrPtr pServer, AStrPtr pUserName, AStr
 
         delete res;
         delete pstmt;
+
+        res   = nullptr;
+        pstmt = nullptr;
 
         // Execute the ALTER TABLE query to add foreign key constraint
         stmt  = con->createStatement ();
@@ -2799,17 +2761,17 @@ eGoodBad TLocalDataBase::DropForeignKey (AStrPtr pServer, AStrPtr pUserName, ASt
         driver = get_driver_instance ();
         con    = driver->connect (pServer, pUserName, pPassword);
 
-        if (!con) {
+    } catch (SQLException& e) {
 
-            bad_resp     = "Connection error";
-            len          = (ULong) strlen (bad_resp);
-            pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
-            UTF8ToUTF16 (pBadResponse, bad_resp, len);
-            return BAD;
-        }
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
 
-        con->setSchema (pDataBaseName);
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+        return BAD;
+    }
 
+    try {
         // Check if the database exists
         pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
         pstmt->setString (1, pDataBaseName);
@@ -2830,7 +2792,11 @@ eGoodBad TLocalDataBase::DropForeignKey (AStrPtr pServer, AStrPtr pUserName, ASt
         delete res;
         delete pstmt;
 
+        res   = nullptr;
+        pstmt = nullptr;
+
         // Check if the table exists
+        con->setSchema(pDataBaseName);
         pstmt = con->prepareStatement ("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?");
         pstmt->setString (1, pDataBaseName);
         pstmt->setString (2, pTableName);
@@ -2850,6 +2816,9 @@ eGoodBad TLocalDataBase::DropForeignKey (AStrPtr pServer, AStrPtr pUserName, ASt
 
         delete res;
         delete pstmt;
+
+        res   = nullptr;
+        pstmt = nullptr;
 
         // Check if the foreign key constraint exists
         pstmt = con->prepareStatement ("SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND CONSTRAINT_NAME = ? AND CONSTRAINT_TYPE = 'FOREIGN KEY'");
@@ -2872,6 +2841,9 @@ eGoodBad TLocalDataBase::DropForeignKey (AStrPtr pServer, AStrPtr pUserName, ASt
 
         delete res;
         delete pstmt;
+
+        res   = nullptr;
+        pstmt = nullptr;
 
         // Execute the ALTER TABLE query to drop the foreign key constraint
         stmt  = con->createStatement ();
@@ -2915,9 +2887,20 @@ eGoodBad TLocalDataBase::ShowForeignKeyData (Word pArgc, AStrPtr pServer, AStrPt
 
     try {
 
-        driver = get_driver_instance ();
-        con    = driver->connect (pServer, pUserName, pPassword);
+        driver = get_driver_instance();
+        con    = driver->connect(pServer, pUserName, pPassword);
 
+    }catch (SQLException& e) {
+
+        bad_resp     = e.what ();
+        len          = (ULong) strlen (bad_resp);
+        pBadResponse = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+        UTF8ToUTF16 (pBadResponse, bad_resp, len);
+        return BAD;
+    }
+
+    try {
         pstmt = con->prepareStatement ("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?");
         pstmt->setString (1, pDataBaseName);
         res   = pstmt->executeQuery ();
@@ -2937,6 +2920,8 @@ eGoodBad TLocalDataBase::ShowForeignKeyData (Word pArgc, AStrPtr pServer, AStrPt
 
         delete res;
         delete pstmt;
+
+        res   = nullptr;
         pstmt = nullptr;
 
         con->setSchema (pDataBaseName);
@@ -2964,6 +2949,8 @@ eGoodBad TLocalDataBase::ShowForeignKeyData (Word pArgc, AStrPtr pServer, AStrPt
 
             delete res;
             delete pstmt;
+
+            res   = nullptr;
             pstmt = nullptr;
         }
 
@@ -3094,6 +3081,8 @@ eGoodBad TLocalDataBase::CreateTrigger (Word pArgc, AStrPtr pServer, AStrPtr pUs
 
         delete res;
         delete pstmt;
+
+        res   = nullptr;
         pstmt = nullptr;
 
         // Check if trigger exists
@@ -3118,6 +3107,8 @@ eGoodBad TLocalDataBase::CreateTrigger (Word pArgc, AStrPtr pServer, AStrPtr pUs
 
         delete res;
         delete pstmt;
+
+        res   = nullptr;
         pstmt = nullptr;
 
         // Create trigger query
@@ -3202,6 +3193,8 @@ eGoodBad TLocalDataBase::DropTrigger (AStrPtr pServer, AStrPtr pUserName, AStrPt
 
         delete res;
         delete pstmt;
+
+        res   = nullptr;
         pstmt = nullptr;
 
         // Check if the trigger exists
@@ -3226,6 +3219,9 @@ eGoodBad TLocalDataBase::DropTrigger (AStrPtr pServer, AStrPtr pUserName, AStrPt
 
         delete res;
         delete pstmt;
+
+        res   = nullptr;
+        pstmt = nullptr;
 
         // Drop the trigger
         stmt  = con->createStatement ();
@@ -3299,6 +3295,8 @@ eGoodBad TLocalDataBase::SetGeneralLog (AStrPtr pServer, AStrPtr pUserName, AStr
 
         delete res;
         delete pstmt;
+
+        res   = nullptr;
         pstmt = nullptr;
 
         // Set the schema
@@ -3404,6 +3402,8 @@ eGoodBad TLocalDataBase::PerformMysqlJoin (AStrPtr pServer, AStrPtr pUserName, A
 
         delete res;
         delete pstmt;
+
+        res   = nullptr;
         pstmt = nullptr;
 
         // Set the schema
@@ -3546,6 +3546,7 @@ eGoodBad TLocalDataBase::PerformMysqlJoin (AStrPtr pServer, AStrPtr pUserName, A
                 return BAD;
             }
             delete res;
+            res = nullptr;
 
         } else {
 

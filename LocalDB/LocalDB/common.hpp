@@ -18,15 +18,14 @@
 #include <cppconn/statement.h>
 #include <cppconn/resultset.h>
 
-#include "LocalDB.h"
-#include "LocalDB.hpp"
-#include "defines.h"
-#include "enum.h"
-
 #include "rapidschema.h"
 #include <stringbuffer.h>
 #include <writer.h>
 #include <prettywriter.h>
 #include <error/en.h>
 
-using namespace std;
+#include "defines.h"
+#include "enum.h"
+#include "helper.hpp"
+#include "LocalDB.h"
+#include "LocalDB.hpp"
