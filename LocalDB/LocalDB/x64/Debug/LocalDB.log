@@ -1,4 +1,6 @@
-﻿  LocalDB.cpp
+﻿  helper.cpp
+  LocalDB.cpp
+  Generating Code...
 mysqlcppconn-static.lib(mysql_driver.obj) : warning LNK4099: PDB '' was not found with 'mysqlcppconn-static.lib(mysql_driver.obj)' or at ''; linking object as if no debug info
 mysqlcppconn-static.lib(mysql_connection.obj) : warning LNK4099: PDB '' was not found with 'mysqlcppconn-static.lib(mysql_connection.obj)' or at ''; linking object as if no debug info
 mysqlcppconn-static.lib(mysql_native_driver_wrapper.obj) : warning LNK4099: PDB '' was not found with 'mysqlcppconn-static.lib(mysql_native_driver_wrapper.obj)' or at ''; linking object as if no debug info
