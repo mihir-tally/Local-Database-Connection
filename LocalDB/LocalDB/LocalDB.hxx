@@ -38,4 +38,13 @@ void TLocalDataBase::SetResult (CAStrPtr pVal)
     AsciiToUTF16 (*vResult, pVal, *vResultSize - 1);
 }
 
+void TLocalDataBase::HandleBadReponse (CAStrPtr pBadResponse, StrPtr & pBadRespStr)
+{
+        ULong    len;
+
+    len         = (ULong) strlen (pBadResponse);
+    pBadRespStr = (StrPtr) malloc ((len + 1) * sizeof (Char));
+    
+    UTF8ToUTF16 (pBadRespStr, pBadResponse, len);
+}
 #endif //LOCALDB_HXX

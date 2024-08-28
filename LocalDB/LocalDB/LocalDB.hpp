@@ -145,6 +145,7 @@ inline              ~TLocalDataBase            ();
 
 inline  void        SetResult                  (CWStrPtr pVal);
 inline  void        SetResult                  (CAStrPtr pVal);
+inline  void        HandleBadReponse           (CAStrPtr pBadResponse, StrPtr& pBadRespStr);
 
         StrPtr *    vResult;
         Long *      vResultSize;
