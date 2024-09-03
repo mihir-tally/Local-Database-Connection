@@ -1445,7 +1445,7 @@ eGoodBad TLocalDataBase::MysqlJoin (Word pArgc, WStrPtr* pArgv)
         AStrPtr    table_name                 = nullptr;
         AStrPtr    on_condition               = nullptr;
         AStrPtr    where_condition            = nullptr;
-        AStrPtr    enable_log_query           = nullptr;
+        AStrPtr    order_by_condition         = nullptr;
         AStrPtr *  table_names_array          = nullptr;
         AStrPtr *  on_condition_array         = nullptr;
         CAStrPtr   successful_message         = nullptr;
@@ -1464,10 +1464,11 @@ eGoodBad TLocalDataBase::MysqlJoin (Word pArgc, WStrPtr* pArgv)
         ULong      on_condition_count;
         ULong      on_condition_data_count;
         ULong      where_condition_len;
+        ULong      order_by_condition_len;
         ULong      successful_message_len;
         eGoodBad   rc                         = BAD;
 
-    if (pArgc != 10) {
+    if (pArgc != 9 && pArgc != 10 && pArgc != 11) {
 
         SetResult (INSUFFICIENT_PARAMS_MYSQL_JOIN);
         return rc;
@@ -1555,9 +1556,22 @@ eGoodBad TLocalDataBase::MysqlJoin (Word pArgc, WStrPtr* pArgv)
     on_condition     = (AStrPtr) malloc ((on_condition_len + 1) * sizeof (AChar));
     UTF16ToAscii (on_condition, pArgv[8], on_condition_len);
 
-    where_condition_len = (ULong) _tcslen (pArgv[9]);
-    where_condition     = (AStrPtr) malloc ((where_condition_len + 1) * sizeof (AChar));
-    UTF16ToAscii (where_condition, pArgv[9], where_condition_len);
+    if (pArgc == 10) {
+
+        where_condition_len = (ULong) _tcslen (pArgv[9]);
+        where_condition     = (AStrPtr) malloc ((where_condition_len + 1) * sizeof (AChar));
+        UTF16ToAscii (where_condition, pArgv[9], where_condition_len);
+
+    } else if (pArgc == 11) {
+
+        where_condition_len = (ULong) _tcslen (pArgv[9]);
+        where_condition     = (AStrPtr) malloc ((where_condition_len + 1) * sizeof (AChar));
+        UTF16ToAscii (where_condition, pArgv[9], where_condition_len);
+
+        order_by_condition_len = (ULong) _tcslen (pArgv[10]);
+        order_by_condition     = (AStrPtr) malloc ((order_by_condition_len + 1) * sizeof (AChar));
+        UTF16ToAscii (order_by_condition, pArgv[10], order_by_condition_len);
+    }
 
     RemoveSpacesAroundComma (table_name);
     RemoveSpacesAroundComma (on_condition);
@@ -1575,7 +1589,7 @@ eGoodBad TLocalDataBase::MysqlJoin (Word pArgc, WStrPtr* pArgv)
 
     if (table_count + 1 == table_names_data_count && on_condition_count + 1 == on_condition_data_count) {
 
-        if (PerformMysqlJoin (server, username, password, databasename, vJoinType, select_condition, set_or_from_condition, table_names_array, table_count + 1, on_condition_array, on_condition_count + 1, where_condition, bad_response) == BAD) {
+        if (PerformMysqlJoin (server, username, password, databasename, vJoinType, select_condition, set_or_from_condition, table_names_array, table_count + 1, on_condition_array, on_condition_count + 1, where_condition, order_by_condition, bad_response) == BAD) {
 
             SetResult (bad_response);
             goto end;
@@ -1598,6 +1612,7 @@ end:
     free (table_name);
     free (on_condition);
     free (where_condition);
+    free (order_by_condition);
     FreeArrayDataAndArray (table_names_array, table_names_data_count);
     FreeArrayDataAndArray (on_condition_array, on_condition_data_count);
     if (bad_response) free (bad_response);
@@ -3096,7 +3111,7 @@ eGoodBad TLocalDataBase::SetGeneralLog (AStrPtr pServer, AStrPtr pUserName, AStr
 }
 
 eGoodBad TLocalDataBase::PerformMysqlJoin (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, eJoinType pJoinType, AStrPtr pSelectCondition, AStrPtr pSetOrFromCondtion, AStrPtr * pTableNameArray, 
-                                           ULong pTableNameArraySize, AStrPtr * pOnConditionArray, ULong pOnConditionArraySize, AStrPtr pWhereCondition, StrPtr& pBadResponse)
+                                           ULong pTableNameArraySize, AStrPtr * pOnConditionArray, ULong pOnConditionArraySize, AStrPtr pWhereCondition, AStrPtr pOrderByCondition, StrPtr& pBadResponse)
 {
         Driver *               driver             = nullptr;
         Connection *           con                = nullptr;
@@ -3228,6 +3243,10 @@ eGoodBad TLocalDataBase::PerformMysqlJoin (AStrPtr pServer, AStrPtr pUserName, A
             query += " WHERE " + string (pWhereCondition);
         }
 
+        if (pOrderByCondition && *pOrderByCondition) {
+
+            query += " ORDER BY " + string (pOrderByCondition);
+        }
         query += ";";
 
         if (is_select_query) {

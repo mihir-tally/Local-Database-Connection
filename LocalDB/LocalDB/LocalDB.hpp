@@ -52,7 +52,7 @@ using namespace sql;
 #define INSUFFICIENT_PARAMS_SHOW_FOREIGN_KEY                "Insufficient TDL Parameters. Expected parameters for ShowForeignKey are '<Server>:<User Name>:<Password>:<DataBase Name>:<Table Name>'"
 #define INSUFFICIENT_PARAMS_TRIGGERS                        "Insufficient TDL Parameters. Expected parameters for TRIGGERS are '<Server>:<User Name>:<Password>:<DataBase Name>:<Trigger Name>:<Table Name>':<BEFORE/AFTER>:<INSERT/DELETE/UPDATE>:<Condition> (Optional)"
 #define INSUFFICIENT_PARAMS_GENERAL_LOG                     "Insufficient TDL Parameters. Expected parameters for GeneralLog are '<Server>:<User Name>:<Password>:<DataBase Name>:<Enable/Disable/Delete>"
-#define INSUFFICIENT_PARAMS_MYSQL_JOIN                      "Insufficient TDL Parameters. Expected parameters for MysqlJoin are '<Server>:<User Name>:<Password>:<DataBase Name>:<Select Condition>:<From/Set Condition>:<Table Name>:<On Condition>:<Where Condition>"
+#define INSUFFICIENT_PARAMS_MYSQL_JOIN                      "Insufficient TDL Parameters. Expected parameters for MysqlJoin are '<Server>:<User Name>:<Password>:<DataBase Name>:<Select Condition>:<From/Set Condition>:<Table Name>:<On Condition>:<Where Condition> (Optional):<Order By> (Optional)"
 
 enum eActionType {
 
@@ -131,7 +131,7 @@ inline              ~TLocalDataBase            ();
         eGoodBad   DropTrigger                 (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, AStrPtr pTriggerName, StrPtr& pBadResponse);
         eGoodBad   SetGeneralLog               (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, eActionType pLogAction, StrPtr& pBadResponse);
         eGoodBad   PerformMysqlJoin            (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, eJoinType pJoinType, AStrPtr pSelectCondition, AStrPtr pSetOrFromCondtion, AStrPtr* pTableNameArray,
-                                                ULong pTableNameArraySize, AStrPtr* pOnConditionArray, ULong pOnConditionArraySize, AStrPtr pWhereCondition, StrPtr& pBadResponse);
+                                                ULong pTableNameArraySize, AStrPtr* pOnConditionArray, ULong pOnConditionArraySize, AStrPtr pWhereCondition, AStrPtr pOrderByCondition, StrPtr& pBadResponse);
 
         void       RemoveSpacesAroundComma     (AStrPtr pStr);
         Long       CountCommaOccurrence        (AStrPtr pStr);
