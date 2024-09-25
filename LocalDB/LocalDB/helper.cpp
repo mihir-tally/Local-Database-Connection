@@ -39,3 +39,19 @@ void AsciiToUTF16 (WStrPtr pDestination, CAStrPtr pSource, UInt32 pLength)
 
     *pDestination = (WChar)EOS;
 }
+
+void HandleBadReponse (CAStrPtr pBadResponseSource, StrPtr& pBadRespDestination)
+{
+        ULong len;
+
+    if (*pBadRespDestination || pBadRespDestination) {
+
+        free (pBadRespDestination);
+
+    }
+
+    len                 = (ULong) strlen (pBadResponseSource);
+    pBadRespDestination = (StrPtr) malloc ((len + 1) * sizeof (Char));
+
+    UTF8ToUTF16 (pBadRespDestination, pBadResponseSource, len);
+}

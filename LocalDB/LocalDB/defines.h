@@ -588,5 +588,25 @@ typedef ULong               NameOffset;
 
 /** @} */
 
+enum eActionType {
+
+    ACTION_TYPE_UNKNOWN = 0,
+    ACTION_TYPE_ENABLE,
+    ACTION_TYPE_DISABLE,
+    ACTION_TYPE_DELETE,
+};
+
+enum eJoinType {
+
+    UNKNOWN_JOIN_TYPE = 0,
+    INNER_JOIN_TYPE,
+    LEFT_JOIN_TYPE,
+    RIGHT_JOIN_TYPE,
+    CROSS_JOIN_TYPE,
+    DELETE_JOIN_TYPE,
+    EQUI_JOIN_TYPE,
+    NATURAL_JOIN_TYPE,
+    UPDATE_JOIN_TYPE,
+};
 #endif // LBA_DEFINES_H
 

@@ -10,6 +10,9 @@
 #include <memory.h>
 #include <math.h>
 #include <iostream>
+#include <sql.h>
+#include <sqlext.h>
+#include <vector>
 
 #include "mysql_connection.h"
 #include <cppconn/driver.h>
@@ -29,3 +32,5 @@
 #include "helper.hpp"
 #include "LocalDB.h"
 #include "LocalDB.hpp"
+#include "sqlserver.hpp"
+#include "mysqlserver.hpp"

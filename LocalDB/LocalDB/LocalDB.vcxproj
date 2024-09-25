@@ -166,7 +166,9 @@
     <ClInclude Include="LocalDB.h" />
     <ClInclude Include="LocalDB.hpp" />
     <ClInclude Include="LocalDB.hxx" />
+    <ClInclude Include="mysqlserver.hpp" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="sqlserver.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Source.def" />
@@ -174,6 +176,8 @@
   <ItemGroup>
     <ClCompile Include="helper.cpp" />
     <ClCompile Include="LocalDB.cpp" />
+    <ClCompile Include="mysqlserver.cpp" />
+    <ClCompile Include="sqlserver.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

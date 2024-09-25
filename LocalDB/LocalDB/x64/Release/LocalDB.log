@@ -1,9 +1,11 @@
 ﻿  helper.cpp
   LocalDB.cpp
+  mysqlserver.cpp
+  sqlserver.cpp
      Creating library D:\work\LocalDataBaseConnection\LocalDB\x64\Release\LocalDB.lib and object D:\work\LocalDataBaseConnection\LocalDB\x64\Release\LocalDB.exp
   Generating code
   Previous IPDB not found, fall back to full compilation.
-  All 390 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  All 510 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
   Finished generating code
 mysqlcppconn-static.lib(mysql_driver.obj) : warning LNK4099: PDB '' was not found with 'mysqlcppconn-static.lib(mysql_driver.obj)' or at ''; linking object as if no debug info
 mysqlcppconn-static.lib(mysql_connection.obj) : warning LNK4099: PDB '' was not found with 'mysqlcppconn-static.lib(mysql_connection.obj)' or at ''; linking object as if no debug info
