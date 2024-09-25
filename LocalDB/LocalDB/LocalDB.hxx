@@ -8,6 +8,13 @@ TLocalDataBase::TLocalDataBase (StrPtr* pResult, Long* pResultSize)
     vDllPath    = nullptr;
     vDllPathLen = 0;
 
+    vActionType = ACTION_TYPE_UNKNOWN;
+    vJoinType   = UNKNOWN_JOIN_TYPE;
+    vServerType = UNKNOWN_SERVER_TYPE;
+
+    vSqlServer   = nullptr;
+    vMySqlServer = nullptr;
+
     GetDllPath ();
 }
 
@@ -17,6 +24,15 @@ TLocalDataBase::~TLocalDataBase ()
 
         free (vDllPath);
         vDllPath = nullptr;
+    }
+
+    if (vServerType == MYSQL_SERVER_TYPE) {
+
+        delete vMySqlServer;
+
+    } else if (vServerType == SQL_SERVER_TYPE) {
+
+        delete vSqlServer;
     }
 }
 
@@ -38,13 +54,4 @@ void TLocalDataBase::SetResult (CAStrPtr pVal)
     AsciiToUTF16 (*vResult, pVal, *vResultSize - 1);
 }
 
-void TLocalDataBase::HandleBadReponse (CAStrPtr pBadResponse, StrPtr & pBadRespStr)
-{
-        ULong    len;
-
-    len         = (ULong) strlen (pBadResponse);
-    pBadRespStr = (StrPtr) malloc ((len + 1) * sizeof (Char));
-    
-    UTF8ToUTF16 (pBadRespStr, pBadResponse, len);
-}
 #endif //LOCALDB_HXX
