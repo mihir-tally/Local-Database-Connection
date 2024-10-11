@@ -1585,6 +1585,45 @@ eGoodBad TMySqlServer::PerformMysqlJoin (AStrPtr pServer, AStrPtr pUserName, ASt
     }
 }
 
+eGoodBad TMySqlServer::CheckMySqlServerStatus (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, StrPtr& pBadResponse)
+{
+    Driver *        driver = nullptr;
+    Connection *    con    = nullptr;
+
+    try {
+
+        driver = get_driver_instance ();
+        con    = driver->connect (pServer, pUserName, pPassword);
+
+        if (con->isValid ()) {
+
+            if (con->isClosed ()) {
+
+                HandleBadReponse (MYSQL_SERVER_NOT_RESPONDING, pBadResponse);
+
+                delete con;
+                return BAD;
+            }
+            delete con;
+            return GOOD;
+        }
+        else {
+
+            HandleBadReponse (MYSQL_SERVER_FAILED_CONN, pBadResponse);
+
+            delete con;
+            return BAD;
+        }
+
+    } catch (SQLException& e) {
+
+        HandleBadReponse (e.what (), pBadResponse);
+
+        delete con;
+        return BAD;
+    }
+}
+
 void TMySqlServer::Recursion (int pItr, int pMainCount, string& pTableName, ResultSetMetaData* meta_data, ResultSet* res, Value& pRowObject, Document::AllocatorType& pAllocator)
 {
     if (pItr == pMainCount || pTableName.empty()) {

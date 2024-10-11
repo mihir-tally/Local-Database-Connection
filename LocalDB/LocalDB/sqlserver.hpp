@@ -42,6 +42,7 @@
 #define SQL_DELETE_GENERAL_LOG_FILE_FAILED                         "Failed to delete GeneralQueryLog.xel file"
 #define INSERT_GENERAL_LOG_DATA_QUERY                              "INSERT INTO GeneralQueryLogHistory (client_hostname, client_app_name, username, database_name, statement, duration) SELECT CAST(event_data AS XML).value('(event/action[@name=\"client_hostname\"]/value)[1]', 'NVARCHAR(256)') AS client_hostname, CAST(event_data AS XML).value('(event/action[@name=\"client_app_name\"]/value)[1]', 'NVARCHAR(256)') AS client_app_name, CAST(event_data AS XML).value('(event/action[@name=\"username\"]/value)[1]', 'NVARCHAR(256)') AS username, CAST(event_data AS XML).value('(event/action[@name=\"database_name\"]/value)[1]', 'NVARCHAR(256)') AS database_name, CAST(event_data AS XML).value('(event/data[@name=\"statement\"]/value)[1]', 'NVARCHAR(MAX)') AS statement, CAST(event_data AS XML).value('(event/data[@name=\"duration\"]/value)[1]', 'BIGINT') AS duration FROM sys.fn_xe_file_target_read_file('%sGeneralQueryLog*.xel', NULL, NULL, NULL) AS logs;"
 #define SHOW_GENERAL_LOG_DATA_QUERY                                "select * from GeneralQueryLogHistory;"
+#define SQL_SERVER_NOT_RESPONDING                                  "Sql Server is not Responding"
 
 #define ALLOC_TSqlServer     new TSqlServer
 
@@ -90,7 +91,7 @@ class TSqlServer {
         eGoodBad       PerformSqlJoin          (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, eJoinType pJoinType, AStrPtr pSelectCondition,
                                                 AStrPtr pSetOrFromCondtion, AStrPtr* pTableNameArray, ULong pTableNameArraySize, AStrPtr* pOnConditionArray,
                                                 ULong pOnConditionArraySize, AStrPtr pWhereCondition, AStrPtr pOrderByCondition, AStrPtr& pResultString, StrPtr& pBadResponse);
-
+        eGoodBad       CheckSqlServerStatus    (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, StrPtr& pBadResponse);
     private:
 
         eGoodBad        Initialize             ();

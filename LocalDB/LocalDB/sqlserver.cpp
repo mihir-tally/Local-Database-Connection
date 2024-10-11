@@ -364,6 +364,31 @@ eGoodBad TSqlServer::PerformSqlJoin (AStrPtr pServer, AStrPtr pUserName, AStrPtr
     return GOOD;
 }
 
+eGoodBad TSqlServer::CheckSqlServerStatus (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, StrPtr& pBadResponse)
+{
+    if (Initialize () == BAD) {
+
+        HandleBadReponse (SQL_HANDLE_NOT_INITIALIZE, pBadResponse);
+
+        return BAD;
+    }
+
+    if (ConnectSqlServer (pServer, pUserName, pPassword, pBadResponse) == BAD) {
+
+        return BAD;
+    }
+        SQLINTEGER is_connected;
+
+    SQLGetConnectAttr (vConnHandle, SQL_ATTR_CONNECTION_DEAD, &is_connected, 0, NULL);
+
+    if (is_connected != SQL_CD_FALSE) {
+
+        HandleBadReponse (SQL_SERVER_NOT_RESPONDING, pBadResponse);
+        return BAD;
+    }
+    return GOOD;
+}
+
 eGoodBad TSqlServer::Initialize ()
 {
     // Allocate the environment handle

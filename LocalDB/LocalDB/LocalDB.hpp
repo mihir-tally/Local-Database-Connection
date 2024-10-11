@@ -6,6 +6,8 @@
 using namespace std;
 using namespace sql;
 
+#define LOCAL_DATABASE_CONN_DLL_VERSION                     _TEXT("1.0")
+
 #define MAX_PATH_LENGTH                                     1024
 
 #define DATABASE_TABLE_DATA_FILE_NAME                       _TEXT ("tallyprime_sql_data.json")
@@ -39,6 +41,8 @@ using namespace sql;
 #define EQUI_JOIN_EXECUTED                                  "Equi Join Query Executed Successfully"
 #define NATURAL_JOIN_EXECUTED                               "Natural Join Query Executed Successfully"
 #define UPDATE_JOIN_EXECUTED                                "Update Join Query Executed Successfully"
+#define MYSQL_SERVER_STATUS_ALIVE                           "MySql Server is Alive and Responding"
+#define SQL_SERVER_STATUS_ALIVE                             "Sql Server is Alive and Responding"
 
 #define DATABASE_NOT_EXIST                                  "Database does not exist"
 #define TABLE_NOT_EXIST                                     "Table does not exist"
@@ -70,6 +74,7 @@ using namespace sql;
 #define INSUFFICIENT_PARAMS_TRIGGERS                        "Insufficient TDL Parameters. Expected parameters for TRIGGERS are '<MySqlServer or SqlServer>:<Server>:<User Name>:<Password>:<DataBase Name>:<Trigger Name>:<Table Name>':<BEFORE/AFTER>:<INSERT/DELETE/UPDATE>:<Condition> (Optional)"
 #define INSUFFICIENT_PARAMS_GENERAL_LOG                     "Insufficient TDL Parameters. Expected parameters for GeneralLog are '<MySqlServer or SqlServer>:<Server>:<User Name>:<Password>:<DataBase Name>:<Enable/Disable/Delete>"
 #define INSUFFICIENT_PARAMS_MYSQL_JOIN                      "Insufficient TDL Parameters. Expected parameters for MysqlJoin are '<MySqlServer or SqlServer>:<Server>:<User Name>:<Password>:<DataBase Name>:<Select Condition>:<From/Set Condition>:<Table Name>:<On Condition>:<Where Condition> (Optional):<Order By> (Optional)"
+#define INSUFFICIENT_PARAMS_CHECK_SERVER_STATUS             "Insufficient TDL Parameters. Expected parameters are '<MySqlServer or SqlServer>:<Server>:<User Name>:<Password>'"
 
 enum eServerType {
 
@@ -99,7 +104,8 @@ inline              ~TLocalDataBase            ();
         eGoodBad    ShowForeignKey             (Word pArgc, WStrPtr* pArgv);
         eGoodBad    Triggers                   (Word pArgc, WStrPtr* pArgv);
         eGoodBad    GeneralLog                 (Word pArgc, WStrPtr* pArgv);
-        eGoodBad    MysqlJoin                  (Word pArgc, WStrPtr* pArgv);
+        eGoodBad    JoinTable                  (Word pArgc, WStrPtr* pArgv);
+        eGoodBad    CheckServerStatus          (Word pArgc, WStrPtr* pArgv);
 
     private:
 

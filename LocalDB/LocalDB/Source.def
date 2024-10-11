@@ -13,4 +13,6 @@ EXPORTS
 	ShowForeignKey
 	Triggers
 	GeneralLog
-	MysqlJoin
+	JoinTable
+	GetDLLVersion
+	CheckServerStatus
