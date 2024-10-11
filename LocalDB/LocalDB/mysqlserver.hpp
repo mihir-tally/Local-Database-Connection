@@ -5,6 +5,9 @@ using namespace std;
 using namespace sql;
 using namespace rapidjson;
 
+#define MYSQL_SERVER_NOT_RESPONDING "MySql Server is not Responding"
+#define MYSQL_SERVER_FAILED_CONN    "Failed to Establish Connection with MySql Server"
+
 #define ALLOC_TMySqlServer     new TMySqlServer
 
 class TMySqlServer {
@@ -50,6 +53,7 @@ class TMySqlServer {
                                               AStrPtr pSetOrFromCondtion, AStrPtr* pTableNameArray, ULong pTableNameArraySize, AStrPtr* pOnConditionArray, ULong pOnConditionArraySize,
                                               AStrPtr pWhereCondition, AStrPtr pOrderByCondition, AStrPtr& pResultString, StrPtr& pBadResponse);
 
+        eGoodBad    CheckMySqlServerStatus   (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, StrPtr& pBadResponse);
         eGoodBad    MySqlSetGeneralLog       (AStrPtr pServer, AStrPtr pUserName, AStrPtr pPassword, AStrPtr pDataBaseName, eActionType pLogAction, StrPtr& pBadResponse);
         void        Recursion                (int pItr, int pMainCount, string& pTableName, ResultSetMetaData* meta_data, ResultSet* res, Value& pRowObject, Document::AllocatorType& pAllocator);
 };

@@ -156,13 +156,36 @@ HRESULT GeneralLog (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultS
     return S_OK;
 }
 
-HRESULT MysqlJoin (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize)
+HRESULT JoinTable (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize)
 {
         TLocalDataBase * localdatabase;
 
     localdatabase = ALLOC_TLocalDataBase (pResult, pResultSize);
 
-    localdatabase->MysqlJoin (pArgc, pArgv);
+    localdatabase->JoinTable (pArgc, pArgv);
+
+    delete localdatabase;
+    return S_OK;
+}
+
+HRESULT GetDLLVersion (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize)
+{
+    *pResultSize = (Long) wcslen (LOCAL_DATABASE_CONN_DLL_VERSION) + 1;
+
+    *pResult = static_cast <WStrPtr> (CoTaskMemAlloc (*pResultSize * sizeof (WChar)));
+
+    memcpy (*pResult, LOCAL_DATABASE_CONN_DLL_VERSION, *pResultSize * sizeof (WChar));
+
+    return S_OK;
+}
+
+HRESULT CheckServerStatus (Word pArgc, WStrPtr* pArgv, WStrPtr* pResult, Long* pResultSize)
+{
+        TLocalDataBase* localdatabase;
+
+    localdatabase = ALLOC_TLocalDataBase (pResult, pResultSize);
+
+    localdatabase->CheckServerStatus (pArgc, pArgv);
 
     delete localdatabase;
     return S_OK;
@@ -1610,7 +1633,7 @@ end:
     return rc;
 }
 
-eGoodBad TLocalDataBase::MysqlJoin (Word pArgc, WStrPtr* pArgv)
+eGoodBad TLocalDataBase::JoinTable (Word pArgc, WStrPtr* pArgv)
 {
         AStrPtr    server                     = nullptr;
         AStrPtr    username                   = nullptr;
@@ -1814,6 +1837,70 @@ end:
     FreeArrayDataAndArray (table_names_array, table_names_data_count);
     FreeArrayDataAndArray (on_condition_array, on_condition_data_count);
     if (result_string) free (result_string);
+    if (bad_response) free (bad_response);
+
+    return rc;
+}
+
+eGoodBad TLocalDataBase::CheckServerStatus (Word pArgc, WStrPtr* pArgv)
+{
+        AStrPtr    server                          = nullptr;
+        AStrPtr    username                        = nullptr;
+        AStrPtr    password                        = nullptr;
+        StrPtr     bad_response                    = nullptr;
+        ULong      server_len;
+        ULong      username_len;
+        ULong      password_len;
+        eGoodBad   rc                               = BAD;
+
+    if (pArgc != 4) {
+
+        SetResult (INSUFFICIENT_PARAMS_CHECK_SERVER_STATUS);
+        return rc;
+    }
+
+    if (SelectServerAndAlloc (pArgv[0]) == BAD) {
+
+        SetResult (INCORRECT_SERVER_NAME_SELECT);
+        return rc;
+    }
+
+    server_len = (ULong) _tcslen (pArgv[1]);
+    server     = (AStrPtr) malloc ((server_len + 1) * sizeof (AChar));
+    UTF16ToAscii (server, pArgv[1], server_len);
+
+    username_len = (ULong) _tcslen (pArgv[2]);
+    username     = (AStrPtr) malloc ((username_len + 1) * sizeof (AChar));
+    UTF16ToAscii (username, pArgv[2], username_len);
+
+    password_len = (ULong) _tcslen (pArgv[3]);
+    password     = (AStrPtr) malloc ((password_len + 1) * sizeof (AChar));
+    UTF16ToAscii (password, pArgv[3], password_len);
+
+    if (vServerType == MYSQL_SERVER_TYPE) {
+
+        if (vMySqlServer->CheckMySqlServerStatus (server, username, password, bad_response) == BAD) {
+
+            SetResult (bad_response);
+            goto end;
+        }
+        SetResult (MYSQL_SERVER_STATUS_ALIVE);
+
+    } else if (vServerType == SQL_SERVER_TYPE) {
+
+        if (vSqlServer->CheckSqlServerStatus (server, username, password, bad_response) == BAD) {
+
+            SetResult (bad_response);
+            goto end;
+        }
+        SetResult (SQL_SERVER_STATUS_ALIVE);
+    }
+    rc = GOOD;
+
+end:
+    free (server);
+    free (username);
+    free (password);
     if (bad_response) free (bad_response);
 
     return rc;
