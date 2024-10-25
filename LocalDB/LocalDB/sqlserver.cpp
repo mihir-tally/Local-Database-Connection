@@ -422,12 +422,12 @@ eGoodBad TSqlServer::ConnectSqlServer (AStrPtr pServer, AStrPtr pUserName, AStrP
         return BAD;
     }
 
-    if (*pUserName && *pPassword) {
+    if ((pUserName && *pUserName) || (pPassword && *pPassword)) {
 
-        conn_str_len = (ULong) (strlen (SQL_SQL_SERVER_AUTHENTICATION) + strlen (pServer) + strlen (pUserName) + strlen (pPassword) + 1);
+        conn_str_len = (ULong) (strlen (SQL_SQL_SERVER_AUTHENTICATION) + strlen (pServer) + strlen (pUserName ? pUserName : "") + strlen (pPassword ? pPassword : "") + 1);
         conn_str     = (AStrPtr) malloc ((conn_str_len + 1) * sizeof (AChar));
 
-        sprintf (conn_str, SQL_SQL_SERVER_AUTHENTICATION, pServer, pUserName, pPassword);
+        sprintf (conn_str, SQL_SQL_SERVER_AUTHENTICATION, pServer, pUserName ? pUserName : "", pPassword ? pPassword : "");
 
     } else {
 

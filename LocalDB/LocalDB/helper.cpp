@@ -44,9 +44,10 @@ void HandleBadReponse (CAStrPtr pBadResponseSource, StrPtr& pBadRespDestination)
 {
         ULong len;
 
-    if (*pBadRespDestination || pBadRespDestination) {
+    if (pBadRespDestination != nullptr && *pBadRespDestination) {
 
         free (pBadRespDestination);
+        pBadRespDestination = nullptr;
 
     }
 
